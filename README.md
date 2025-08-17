@@ -1,4 +1,3 @@
-# README.md
 
 ```markdown
 # 🗂️ File Explorer Pro
