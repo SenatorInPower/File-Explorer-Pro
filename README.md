@@ -194,4 +194,3 @@ function getFileIcon(extension) {
 - GitHub: [@SenatorInPower](https://github.com/SenatorInPower)
 
 Ссылка на проект: [https://github.com/SenatorInPower/File-Explorer-Pro](https://github.com/SenatorInPower/File-Explorer-Pro)
-```
