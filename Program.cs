@@ -39,12 +39,17 @@ public class ArchitectureRequest
 {
     public string RootPath { get; set; }
     public int MaxDepth { get; set; } = 999;
+    public int DetailLevel { get; set; } = 1; // 1-Full, 2-Standard, 3-Minimal
+    public bool CompactMode { get; set; } = true; // Компактный режим - не показывать пустые папки
+    public bool ShowEmptyIndicator { get; set; } = false; // Показывать ли (empty) для пустых папок
+    public bool ShowFileSize { get; set; } = false; // Показывать размер файлов
 }
 
 public class GenerateRequest
 {
     public List<string> SelectedPaths { get; set; }
     public string RootPath { get; set; }
+    public bool ShowFileSize { get; set; } = false; // Добавляем опцию показа размера
 }
 
 public class SizeMode
@@ -57,6 +62,17 @@ public class SizeMode
     public bool IncludeAll { get; set; } = false;
 }
 
+public class UnityArchitectureLevel
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public List<string> IncludeFolders { get; set; }
+    public List<string> ExcludeFolders { get; set; }
+    public List<string> IncludeExtensions { get; set; }
+    public bool ShowAllFiles { get; set; } = false;
+}
+
 // ========== API CONTROLLER ==========
 [ApiController]
 [Route("api/[controller]")]
@@ -64,82 +80,230 @@ public class FilesController : ControllerBase
 {
     private const string DefaultRootPath = @"D:\Программы\AI Agent\Site Agent";
 
-    // Папки, которые всегда исключаются (кроме режима Full)
+    // Папки, которые всегда исключаются для обычных проектов
     private static readonly string[] AlwaysExclude = {
         ".git", "bin", "obj", ".vs", ".idea", ".vscode",
         "publish", ".github", "logs", "packages",
         "TestResults", "node_modules", "dist", "build", ".nuget"
     };
 
-    // Режимы размера с правильной логикой
-    private static readonly List<SizeMode> SizeModes = new List<SizeMode>
+    // Добавьте этот уровень 4 в список UnityArchitectureLevels в Program.cs
+    // Замените существующий список или добавьте этот уровень
+
+    private static readonly List<UnityArchitectureLevel> UnityArchitectureLevels = new List<UnityArchitectureLevel>
+{
+    new UnityArchitectureLevel
     {
-        new SizeMode
+        Id = 1,
+        Name = "Full",
+        Description = "Полная структура - все папки и файлы",
+        IncludeFolders = new List<string>(),
+        ExcludeFolders = new List<string>(),
+        IncludeExtensions = new List<string>(),
+        ShowAllFiles = true
+    },
+    new UnityArchitectureLevel
+    {
+        Id = 2,
+        Name = "Standard",
+        Description = "Стандартная структура - основные папки Unity",
+        IncludeFolders = new List<string>
         {
-            Id = 1,
-            Name = "Full",
-            Description = "100% - АБСОЛЮТНО ВСЕ файлы",
-            ExcludePatterns = new List<string>(),
-            IncludeExtensions = new List<string>(), // Пустой означает ВСЕ
-            IncludeAll = true // Флаг для включения всех файлов
+            "Assets", "Packages", "ProjectSettings", "UserSettings"
         },
-        new SizeMode
+        ExcludeFolders = new List<string>
         {
-            Id = 2,
-            Name = "Large",
-            Description = "~80% - код + конфиги (без тестов)",
-            ExcludePatterns = new List<string> { "Test.cs", "Tests.cs", "Mock.cs", "_test.", ".test." },
-            IncludeExtensions = new List<string> {
-                ".cs", ".cshtml", ".razor", ".js", ".ts", ".jsx", ".tsx",
-                ".html", ".css", ".scss", ".sass",
-                ".csproj", ".sln", ".json", ".yml", ".yaml", ".xml", ".config",
-                ".sql", ".md", ".txt",
-                ".sh", ".cmd", ".bat", ".ps1",
-                ".env", ".gitignore", ".dockerignore", ".editorconfig",
-                "Dockerfile", "Makefile", "docker-compose"
+            "Library", "Temp", "Logs", "MemoryCaptures", "Recordings",
+            "obj", "Build", "Builds", ".vs", ".idea",
+            "*.app", "*.exe", "*_Data", "*_BurstDebugInformation_DoNotShip"
+        },
+        IncludeExtensions = new List<string>
+        {
+            ".cs", ".shader", ".cginc", ".hlsl", ".compute",
+            ".prefab", ".unity", ".mat", ".asset", ".controller",
+            ".asmdef", ".asmref", ".json", ".xml", ".yaml",
+            ".md", ".txt", ".pdf"
+        },
+        ShowAllFiles = false
+    },
+    new UnityArchitectureLevel
+    {
+        Id = 3,
+        Name = "Minimal",
+        Description = "Минимальная структура - только скрипты Unity",
+        IncludeFolders = new List<string>
+        {
+            "Assets/Scripts", "Assets/Editor", "Assets/Plugins",
+            "Assets/Resources", "Assets/StreamingAssets"
+        },
+        ExcludeFolders = new List<string>
+        {
+            "Library", "Temp", "Logs", "obj", "Build", "Builds",
+            "UserSettings", "MemoryCaptures", "Recordings",
+            ".vs", ".idea", "Packages", "ProjectSettings",
+            "Assets/Textures", "Assets/Materials", "Assets/Models",
+            "Assets/Animations", "Assets/Audio", "Assets/Fonts",
+            "Assets/Sprites", "Assets/UI", "Assets/Prefabs"
+        },
+        IncludeExtensions = new List<string>
+        {
+            ".cs", ".asmdef", ".asmref"
+        },
+        ShowAllFiles = false
+    },
+    new UnityArchitectureLevel
+    {
+        Id = 4,
+        Name = "CodeOnly",
+        Description = "Только код - .cs, .csproj, .html, .js файлы",
+        IncludeFolders = new List<string>(), // Не ограничиваем папки
+        ExcludeFolders = new List<string>
+        {
+            ".git", "Library", "Temp", "Logs", "obj", "Build", "Builds",
+            "UserSettings", "MemoryCaptures", "Recordings",
+            ".vs", ".idea", "node_modules", "packages"
+        },
+        IncludeExtensions = new List<string>
+        {
+            ".cs", ".csproj", ".html", ".js", ".jsx", ".ts", ".tsx", ".css", ".scss"
+        },
+        ShowAllFiles = false
+    }
+};
+
+    // Также нужно обновить метод ShouldIncludeFile, чтобы он правильно фильтровал файлы:
+    private bool ShouldIncludeFile(string filePath, UnityArchitectureLevel level)
+    {
+        if (level == null || level.ShowAllFiles)
+            return true;
+
+        if (level.IncludeExtensions == null || !level.IncludeExtensions.Any())
+            return true;
+
+        var extension = Path.GetExtension(filePath).ToLower();
+        var fileName = Path.GetFileName(filePath).ToLower();
+
+        // Проверяем расширение файла
+        return level.IncludeExtensions.Any(ext =>
+            extension.Equals(ext, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // И метод ShouldExcludeDirectory тоже нужно обновить для корректной работы:
+    private bool ShouldExcludeDirectory(string dirPath, List<string> excludePatterns,
+        UnityArchitectureLevel level, string rootPath)
+    {
+        var dirName = Path.GetFileName(dirPath);
+
+        // Сначала проверяем исключаемые папки
+        if (excludePatterns != null && excludePatterns.Any())
+        {
+            foreach (var pattern in excludePatterns)
+            {
+                if (dirName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
+                    dirPath.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
             }
-        },
-        new SizeMode
-        {
-            Id = 3,
-            Name = "Medium",
-            Description = "~60% - backend + основные конфиги",
-            ExcludePatterns = new List<string> {
-                "Test.cs", "Tests.cs", "Mock.cs",
-                "Migrations", "wwwroot", ".md", ".txt"
-            },
-            IncludeExtensions = new List<string> {
-                ".cs", ".cshtml", ".razor",
-                ".csproj", ".sln", ".json", ".config", ".xml",
-                "Dockerfile", "docker-compose"
-            }
-        },
-        new SizeMode
-        {
-            Id = 4,
-            Name = "Small",
-            Description = "~40% - только основной код",
-            ExcludePatterns = new List<string> {
-                "Test.cs", "Tests.cs", "Mock.cs",
-                "Migrations", "wwwroot", "Properties", "Options"
-            },
-            IncludeExtensions = new List<string> {
-                ".cs", ".csproj", ".json"
-            }
-        },
-        new SizeMode
-        {
-            Id = 5,
-            Name = "Tiny",
-            Description = "~20% - минимальный код (Controllers + Models)",
-            ExcludePatterns = new List<string> {
-                "Test.cs", "Tests.cs", "Migrations", "Properties",
-                "wwwroot", "Services", "Options", "Helpers", "Hubs",
-                ".csproj", ".sln", ".json"
-            },
-            IncludeExtensions = new List<string> { ".cs" }
         }
-    };
+
+        // Если есть список включаемых папок, проверяем его
+        if (level != null && level.IncludeFolders != null && level.IncludeFolders.Any())
+        {
+            var relativePath = Path.GetRelativePath(rootPath, dirPath).Replace('\\', '/');
+
+            bool shouldInclude = level.IncludeFolders.Any(includeFolder =>
+                relativePath.StartsWith(includeFolder, StringComparison.OrdinalIgnoreCase) ||
+                includeFolder.StartsWith(relativePath, StringComparison.OrdinalIgnoreCase));
+
+            return !shouldInclude;
+        }
+
+        return false;
+    }
+
+    // Добавьте новый режим "CodeOnly" в список SizeModes в Program.cs:
+
+    private static readonly List<SizeMode> SizeModes = new List<SizeMode>
+{
+    new SizeMode
+    {
+        Id = 1,
+        Name = "Full",
+        Description = "100% - ВСЕ файлы",
+        ExcludePatterns = new List<string>(),
+        IncludeExtensions = new List<string>(),
+        IncludeAll = true
+    },
+    new SizeMode
+    {
+        Id = 2,
+        Name = "Large",
+        Description = "~80% - код + конфиги",
+        ExcludePatterns = new List<string> { "Test.cs", "Tests.cs", "Mock.cs", "_test.", ".test." },
+        IncludeExtensions = new List<string> {
+            ".cs", ".cshtml", ".razor", ".js", ".ts", ".jsx", ".tsx",
+            ".html", ".css", ".scss", ".sass",
+            ".csproj", ".sln", ".json", ".yml", ".yaml", ".xml", ".config",
+            ".sql", ".md", ".txt",
+            ".sh", ".cmd", ".bat", ".ps1",
+            ".env", ".gitignore", ".dockerignore", ".editorconfig",
+            "Dockerfile", "Makefile", "docker-compose"
+        }
+    },
+    new SizeMode
+    {
+        Id = 3,
+        Name = "Medium",
+        Description = "~60% - backend + конфиги",
+        ExcludePatterns = new List<string> {
+            "Test.cs", "Tests.cs", "Mock.cs",
+            "Migrations", "wwwroot", ".md", ".txt"
+        },
+        IncludeExtensions = new List<string> {
+            ".cs", ".cshtml", ".razor",
+            ".csproj", ".sln", ".json", ".config", ".xml",
+            "Dockerfile", "docker-compose"
+        }
+    },
+    new SizeMode
+    {
+        Id = 4,
+        Name = "Small",
+        Description = "~40% - основной код",
+        ExcludePatterns = new List<string> {
+            "Test.cs", "Tests.cs", "Mock.cs",
+            "Migrations", "wwwroot", "Properties", "Options"
+        },
+        IncludeExtensions = new List<string> {
+            ".cs", ".csproj", ".json"
+        }
+    },
+    new SizeMode
+    {
+        Id = 5,
+        Name = "Tiny",
+        Description = "~20% - минимальный код",
+        ExcludePatterns = new List<string> {
+            "Test.cs", "Tests.cs", "Migrations", "Properties",
+            "wwwroot", "Services", "Options", "Helpers", "Hubs",
+            ".csproj", ".sln", ".json"
+        },
+        IncludeExtensions = new List<string> { ".cs" }
+    },
+    new SizeMode
+    {
+        Id = 6,
+        Name = "CodeOnly",
+        Description = "Только код - .cs, .html, .js, .csproj",
+        ExcludePatterns = new List<string> {
+            "Test.cs", "Tests.cs", "Mock.cs", ".sample"
+        },
+        IncludeExtensions = new List<string> {
+            ".cs", ".csproj", ".html", ".js", ".jsx", ".ts", ".tsx", ".css"
+        }
+    }
+};
 
     [HttpGet("tree")]
     public IActionResult GetFileTree([FromQuery] string path = null, [FromQuery] int mode = 1)
@@ -168,6 +332,12 @@ public class FilesController : ControllerBase
         return Ok(SizeModes);
     }
 
+    [HttpGet("unity-architecture-levels")]
+    public IActionResult GetUnityArchitectureLevels()
+    {
+        return Ok(UnityArchitectureLevels);
+    }
+
     [HttpPost("generate")]
     public async Task<IActionResult> Generate([FromBody] GenerateRequest request)
     {
@@ -179,6 +349,7 @@ public class FilesController : ControllerBase
         var sb = new StringBuilder();
         sb.AppendLine($"// Сгенерировано: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"// Выбрано файлов: {request.SelectedPaths.Count}");
+        sb.AppendLine($"// Показывать размер: {(request.ShowFileSize ? "Да" : "Нет")}");
         sb.AppendLine();
 
         long totalSize = 0;
@@ -194,7 +365,12 @@ public class FilesController : ControllerBase
                 var relativePath = Path.GetRelativePath(request.RootPath, filePath);
                 var fileInfo = new FileInfo(filePath);
 
-                sb.AppendLine($"==== {relativePath} ({FormatSize(fileInfo.Length)}) ====");
+                // Формируем заголовок с размером или без
+                string header = request.ShowFileSize
+                    ? $"==== {relativePath} ({FormatSize(fileInfo.Length)}) ===="
+                    : $"==== {relativePath} ====";
+
+                sb.AppendLine(header);
                 sb.AppendLine(content);
                 sb.AppendLine();
 
@@ -209,14 +385,28 @@ public class FilesController : ControllerBase
             }
         }
 
+        // Добавляем итоговую статистику в конец файла
+        if (request.ShowFileSize)
+        {
+            sb.AppendLine();
+            sb.AppendLine("// ========== СТАТИСТИКА ==========");
+            sb.AppendLine($"// Обработано файлов: {processedCount}");
+            sb.AppendLine($"// Общий размер контента: {FormatSize(totalSize)}");
+            sb.AppendLine($"// Средний размер файла: {(processedCount > 0 ? FormatSize(totalSize / processedCount) : "0 B")}");
+        }
+
         var result = sb.ToString();
         var bytes = Encoding.UTF8.GetBytes(result);
 
         Response.Headers.Add("X-Total-Files", processedCount.ToString());
         Response.Headers.Add("X-Total-Size", FormatSize(totalSize));
 
-        return File(bytes, "text/plain; charset=utf-8", $"generated_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+        // Добавляем индикатор размера в имя файла
+        string sizeIndicator = request.ShowFileSize ? "_with_sizes" : "";
+        return File(bytes, "text/plain; charset=utf-8", $"generated{sizeIndicator}_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
     }
+
+    // В методе GenerateArchitecture в Program.cs обновите логику обработки уровней:
 
     [HttpPost("architecture")]
     public IActionResult GenerateArchitecture([FromBody] ArchitectureRequest request)
@@ -232,11 +422,80 @@ public class FilesController : ControllerBase
         }
 
         var maxDepth = request.MaxDepth > 0 ? request.MaxDepth : 999;
+        bool isUnityProject = IsUnityProject(request.RootPath);
+
+        UnityArchitectureLevel architectureLevel = null;
+        List<string> includeExtensions = null;
+
+        if (isUnityProject)
+        {
+            // Для Unity проектов используем UnityArchitectureLevels
+            architectureLevel = UnityArchitectureLevels.FirstOrDefault(l => l.Id == request.DetailLevel)
+                ?? UnityArchitectureLevels[0];
+        }
+        else
+        {
+            // Для обычных проектов используем упрощенную логику на основе DetailLevel
+            switch (request.DetailLevel)
+            {
+                case 1: // Full
+                    includeExtensions = null; // Показываем все
+                    break;
+                case 2: // Large
+                    includeExtensions = new List<string> {
+                    ".cs", ".cshtml", ".razor", ".js", ".ts", ".jsx", ".tsx",
+                    ".html", ".css", ".scss", ".sass",
+                    ".csproj", ".sln", ".json", ".yml", ".yaml", ".xml", ".config",
+                    ".sql", ".md", ".txt", ".sh", ".cmd", ".bat", ".ps1",
+                    ".env", ".gitignore", ".dockerignore", ".editorconfig",
+                    "Dockerfile", "Makefile", "docker-compose"
+                };
+                    break;
+                case 3: // Medium
+                    includeExtensions = new List<string> {
+                    ".cs", ".cshtml", ".razor",
+                    ".csproj", ".sln", ".json", ".config", ".xml",
+                    "Dockerfile", "docker-compose"
+                };
+                    break;
+                case 4: // CodeOnly
+                    includeExtensions = new List<string> {
+                    ".cs", ".csproj", ".html", ".js", ".jsx", ".ts", ".tsx", ".css"
+                };
+                    break;
+                default:
+                    includeExtensions = null;
+                    break;
+            }
+
+            // Создаем временный уровень для обычных проектов
+            if (includeExtensions != null)
+            {
+                architectureLevel = new UnityArchitectureLevel
+                {
+                    Id = request.DetailLevel,
+                    Name = $"Level{request.DetailLevel}",
+                    Description = "Custom level for non-Unity project",
+                    IncludeFolders = new List<string>(),
+                    ExcludeFolders = AlwaysExclude.ToList(),
+                    IncludeExtensions = includeExtensions,
+                    ShowAllFiles = false
+                };
+            }
+        }
 
         var sb = new StringBuilder();
         sb.AppendLine("=== АРХИТЕКТУРА ПРОЕКТА ===");
+        sb.AppendLine($"Тип проекта: {(isUnityProject ? "Unity Project" : "General Project")}");
         sb.AppendLine($"Корень: {request.RootPath}");
         sb.AppendLine($"Глубина: {(maxDepth >= 999 ? "Все уровни" : maxDepth.ToString())}");
+
+        if (architectureLevel != null)
+        {
+            sb.AppendLine($"Уровень детализации: {architectureLevel.Name} - {architectureLevel.Description}");
+        }
+
+        sb.AppendLine($"Режим отображения: {(request.CompactMode ? "Компактный (без пустых папок)" : "Полный")}");
         sb.AppendLine($"Сгенерировано: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine();
 
@@ -248,37 +507,71 @@ public class FilesController : ControllerBase
 
         try
         {
-            // Получаем содержимое корневой директории
+            List<string> excludeFolders = architectureLevel?.ExcludeFolders ?? AlwaysExclude.ToList();
+
             var rootDirs = Directory.GetDirectories(request.RootPath)
-                .Where(d => !AlwaysExclude.Any(ex =>
-                    Path.GetFileName(d).Equals(ex, StringComparison.OrdinalIgnoreCase)))
+                .Where(d => !ShouldExcludeDirectory(d, excludeFolders, architectureLevel, request.RootPath))
                 .OrderBy(d => Path.GetFileName(d))
                 .ToArray();
 
             var rootFiles = Directory.GetFiles(request.RootPath)
+                .Where(f => ShouldIncludeFile(f, architectureLevel))
                 .OrderBy(f => Path.GetFileName(f))
                 .ToArray();
 
-            // Обрабатываем папки
+            // Фильтрация пустых папок в компактном режиме
+            if (request.CompactMode)
+            {
+                var nonEmptyDirs = new List<string>();
+                foreach (var dir in rootDirs)
+                {
+                    if (HasContentInDirectory(dir, excludeFolders, architectureLevel, request.RootPath, 0, maxDepth))
+                    {
+                        nonEmptyDirs.Add(dir);
+                    }
+                }
+                rootDirs = nonEmptyDirs.ToArray();
+            }
+
             for (int i = 0; i < rootDirs.Length; i++)
             {
                 var isLastItem = (i == rootDirs.Length - 1) && rootFiles.Length == 0;
-                BuildDirectoryTree(sb, rootDirs[i], "", isLastItem, 1, maxDepth);
+                BuildDirectoryTreeOptimized(sb, rootDirs[i], "", isLastItem, 1, maxDepth,
+                    architectureLevel, request.RootPath, isUnityProject, request.CompactMode,
+                    request.ShowEmptyIndicator, request.ShowFileSize);
             }
 
-            // Обрабатываем файлы в корне
             for (int i = 0; i < rootFiles.Length; i++)
             {
                 var fileName = Path.GetFileName(rootFiles[i]);
                 var isLastFile = (i == rootFiles.Length - 1);
 
-                sb.Append(isLastFile ? "└─ 📄 " : "├─ 📄 ");
-                sb.AppendLine(fileName);
+                sb.Append(isLastFile ? "└─ " : "├─ ");
+
+                string fileIcon = isUnityProject
+                    ? GetUnityFileIcon(Path.GetExtension(fileName).ToLower())
+                    : "📄";
+
+                string sizeInfo = "";
+                if (request.ShowFileSize)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(rootFiles[i]);
+                        sizeInfo = $" [{FormatSize(fileInfo.Length)}]";
+                    }
+                    catch
+                    {
+                        sizeInfo = " [?]";
+                    }
+                }
+
+                sb.AppendLine($"{fileIcon} {fileName}{sizeInfo}");
             }
 
             if (rootDirs.Length == 0 && rootFiles.Length == 0)
             {
-                sb.AppendLine("   [Папка пуста]");
+                sb.AppendLine("   📭 [Папка не содержит файлов по выбранным критериям]");
             }
         }
         catch (Exception ex)
@@ -290,11 +583,11 @@ public class FilesController : ControllerBase
         var bytes = Encoding.UTF8.GetBytes(resultText);
 
         return File(bytes, "text/plain; charset=utf-8",
-            $"architecture_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            $"architecture_{(isUnityProject ? "unity_" : "")}level{request.DetailLevel}_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
     }
-
-    private void BuildDirectoryTree(StringBuilder sb, string dirPath, string indent,
-        bool isLast, int currentDepth, int maxDepth)
+    private void BuildDirectoryTreeOptimized(StringBuilder sb, string dirPath, string indent,
+        bool isLast, int currentDepth, int maxDepth, UnityArchitectureLevel level,
+        string rootPath, bool isUnityProject, bool compactMode, bool showEmptyIndicator, bool showFileSize = false)
     {
         if (currentDepth > maxDepth) return;
 
@@ -302,62 +595,330 @@ public class FilesController : ControllerBase
         if (string.IsNullOrEmpty(dirName))
             dirName = dirPath;
 
-        // Рисуем ветку и имя папки
-        sb.Append(indent);
-        sb.Append(isLast ? "└─ 📁 " : "├─ 📁 ");
-        sb.AppendLine(dirName);
+        List<string> excludeFolders = level?.ExcludeFolders ?? new List<string>();
 
-        // Формируем отступ для содержимого
+        var subDirs = Directory.GetDirectories(dirPath)
+            .Where(d => !ShouldExcludeDirectory(d, excludeFolders, level, rootPath))
+            .OrderBy(d => Path.GetFileName(d))
+            .ToArray();
+
+        var subFiles = Directory.GetFiles(dirPath)
+            .Where(f => ShouldIncludeFile(f, level))
+            .OrderBy(f => Path.GetFileName(f))
+            .ToArray();
+
+        // В компактном режиме фильтруем пустые подпапки
+        if (compactMode)
+        {
+            var nonEmptyDirs = new List<string>();
+            foreach (var dir in subDirs)
+            {
+                if (HasContentInDirectory(dir, excludeFolders, level, rootPath, currentDepth, maxDepth))
+                {
+                    nonEmptyDirs.Add(dir);
+                }
+            }
+            subDirs = nonEmptyDirs.ToArray();
+        }
+
+        bool hasContent = subFiles.Length > 0 || subDirs.Length > 0;
+
+        // В компактном режиме не показываем совсем пустые папки
+        if (compactMode && !hasContent && currentDepth > 0)
+        {
+            return;
+        }
+
+        sb.Append(indent);
+        sb.Append(isLast ? "└─ " : "├─ ");
+
+        string folderIcon = isUnityProject ? GetUnityFolderIcon(dirName) : "📁";
+        string emptyIndicator = "";
+
+        if (showEmptyIndicator && !hasContent)
+        {
+            emptyIndicator = " 📭";
+        }
+
+        sb.AppendLine($"{folderIcon} {dirName}{emptyIndicator}");
+
         var newIndent = indent + (isLast ? "   " : "│  ");
 
         try
         {
-            // Получаем содержимое папки
-            var subDirs = Directory.GetDirectories(dirPath)
-                .Where(d => !AlwaysExclude.Any(ex =>
-                    Path.GetFileName(d).Equals(ex, StringComparison.OrdinalIgnoreCase)))
-                .OrderBy(d => Path.GetFileName(d))
-                .ToArray();
-
-            var subFiles = Directory.GetFiles(dirPath)
-                .OrderBy(f => Path.GetFileName(f))
-                .ToArray();
-
-            // Рекурсивно обрабатываем подпапки
             for (int i = 0; i < subDirs.Length; i++)
             {
                 var isLastDir = (i == subDirs.Length - 1) && subFiles.Length == 0;
-                BuildDirectoryTree(sb, subDirs[i], newIndent, isLastDir,
-                    currentDepth + 1, maxDepth);
+                BuildDirectoryTreeOptimized(sb, subDirs[i], newIndent, isLastDir,
+                    currentDepth + 1, maxDepth, level, rootPath, isUnityProject, compactMode, showEmptyIndicator, showFileSize);
             }
 
-            // Выводим файлы БЕЗ размеров (как в вашем примере)
             for (int i = 0; i < subFiles.Length; i++)
             {
                 var fileName = Path.GetFileName(subFiles[i]);
                 var isLastFile = (i == subFiles.Length - 1);
 
                 sb.Append(newIndent);
-                sb.Append(isLastFile ? "└─ 📄 " : "├─ 📄 ");
-                sb.AppendLine(fileName);
+                sb.Append(isLastFile ? "└─ " : "├─ ");
+
+                string fileIcon = isUnityProject
+                    ? GetUnityFileIcon(Path.GetExtension(fileName).ToLower())
+                    : "📄";
+
+                // Добавляем размер файла если нужно
+                string sizeInfo = "";
+                if (showFileSize)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(subFiles[i]);
+                        sizeInfo = $" [{FormatSize(fileInfo.Length)}]";
+                    }
+                    catch
+                    {
+                        sizeInfo = " [?]";
+                    }
+                }
+
+                sb.AppendLine($"{fileIcon} {fileName}{sizeInfo}");
             }
 
-            if (subDirs.Length == 0 && subFiles.Length == 0)
+            // Показываем [Пусто] только если не в компактном режиме и папка действительно пустая
+            if (!compactMode && !hasContent)
             {
                 sb.Append(newIndent);
-                sb.AppendLine("[Пусто]");
+                sb.AppendLine("📭 [Нет файлов по критериям]");
             }
         }
         catch (UnauthorizedAccessException)
         {
             sb.Append(newIndent);
-            sb.AppendLine("[Доступ запрещен]");
+            sb.AppendLine("⚠️ [Доступ запрещен]");
         }
         catch (Exception ex)
         {
             sb.Append(newIndent);
-            sb.AppendLine($"[Ошибка: {ex.Message}]");
+            sb.AppendLine($"❌ [Ошибка: {ex.Message}]");
         }
+    }
+
+    private bool HasContentInDirectory(string dirPath, List<string> excludeFolders,
+        UnityArchitectureLevel level, string rootPath, int currentDepth, int maxDepth)
+    {
+        if (currentDepth >= maxDepth) return false;
+
+        try
+        {
+            // Проверяем файлы в текущей папке
+            var hasFiles = Directory.GetFiles(dirPath)
+                .Any(f => ShouldIncludeFile(f, level));
+
+            if (hasFiles) return true;
+
+            // Рекурсивно проверяем подпапки
+            var subDirs = Directory.GetDirectories(dirPath)
+                .Where(d => !ShouldExcludeDirectory(d, excludeFolders, level, rootPath))
+                .ToArray();
+
+            foreach (var dir in subDirs)
+            {
+                if (HasContentInDirectory(dir, excludeFolders, level, rootPath, currentDepth + 1, maxDepth))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Игнорируем ошибки доступа
+            return false;
+        }
+
+        return false;
+    }
+
+    private bool IsUnityProject(string rootPath)
+    {
+        return Directory.Exists(Path.Combine(rootPath, "Assets")) ||
+               Directory.Exists(Path.Combine(rootPath, "ProjectSettings")) ||
+               Directory.Exists(Path.Combine(rootPath, "Library")) ||
+               System.IO.File.Exists(Path.Combine(rootPath, "Assembly-CSharp.csproj"));
+    }
+
+
+
+    private void BuildDirectoryTree(StringBuilder sb, string dirPath, string indent,
+        bool isLast, int currentDepth, int maxDepth, UnityArchitectureLevel level,
+        string rootPath, bool isUnityProject)
+    {
+        if (currentDepth > maxDepth) return;
+
+        var dirName = Path.GetFileName(dirPath);
+        if (string.IsNullOrEmpty(dirName))
+            dirName = dirPath;
+
+        // Предварительно проверяем, есть ли что показывать в этой папке
+        List<string> excludeFolders = level?.ExcludeFolders ?? new List<string>();
+
+        var subDirs = Directory.GetDirectories(dirPath)
+            .Where(d => !ShouldExcludeDirectory(d, excludeFolders, level, rootPath))
+            .OrderBy(d => Path.GetFileName(d))
+            .ToArray();
+
+        var subFiles = Directory.GetFiles(dirPath)
+            .Where(f => ShouldIncludeFile(f, level))
+            .OrderBy(f => Path.GetFileName(f))
+            .ToArray();
+
+        // Проверяем, есть ли содержимое на любом уровне вложенности
+        bool hasContent = subFiles.Length > 0 || HasContentInSubdirectories(subDirs, excludeFolders, level, rootPath, currentDepth, maxDepth);
+
+        // Не показываем папку, если она полностью пустая (включая подпапки)
+        if (!hasContent && currentDepth > 0) // Корневую папку показываем всегда
+        {
+            return;
+        }
+
+        sb.Append(indent);
+        sb.Append(isLast ? "└─ " : "├─ ");
+
+        // Добавляем индикатор пустой папки прямо к имени
+        string folderIcon = isUnityProject ? GetUnityFolderIcon(dirName) : "📁";
+        string emptyIndicator = !hasContent ? " (empty)" : "";
+        sb.AppendLine($"{folderIcon} {dirName}{emptyIndicator}");
+
+        // Если папка пустая, не обрабатываем дальше
+        if (!hasContent)
+        {
+            return;
+        }
+
+        var newIndent = indent + (isLast ? "   " : "│  ");
+
+        try
+        {
+            // Обрабатываем подпапки
+            for (int i = 0; i < subDirs.Length; i++)
+            {
+                var isLastDir = (i == subDirs.Length - 1) && subFiles.Length == 0;
+                BuildDirectoryTree(sb, subDirs[i], newIndent, isLastDir,
+                    currentDepth + 1, maxDepth, level, rootPath, isUnityProject);
+            }
+
+            // Обрабатываем файлы
+            for (int i = 0; i < subFiles.Length; i++)
+            {
+                var fileName = Path.GetFileName(subFiles[i]);
+                var isLastFile = (i == subFiles.Length - 1);
+
+                sb.Append(newIndent);
+                sb.Append(isLastFile ? "└─ " : "├─ ");
+
+                if (isUnityProject)
+                {
+                    var ext = Path.GetExtension(fileName).ToLower();
+                    sb.AppendLine($"{GetUnityFileIcon(ext)} {fileName}");
+                }
+                else
+                {
+                    sb.AppendLine($"📄 {fileName}");
+                }
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            sb.Append(newIndent);
+            sb.AppendLine("⚠️ [Доступ запрещен]");
+        }
+        catch (Exception ex)
+        {
+            sb.Append(newIndent);
+            sb.AppendLine($"❌ [Ошибка: {ex.Message}]");
+        }
+    }
+
+    // Новый вспомогательный метод для проверки содержимого в подпапках
+    private bool HasContentInSubdirectories(string[] directories, List<string> excludeFolders,
+        UnityArchitectureLevel level, string rootPath, int currentDepth, int maxDepth)
+    {
+        if (currentDepth >= maxDepth) return false;
+
+        foreach (var dir in directories)
+        {
+            try
+            {
+                // Проверяем файлы в текущей подпапке
+                var files = Directory.GetFiles(dir)
+                    .Where(f => ShouldIncludeFile(f, level))
+                    .Any();
+
+                if (files) return true;
+
+                // Рекурсивно проверяем подпапки
+                var subDirs = Directory.GetDirectories(dir)
+                    .Where(d => !ShouldExcludeDirectory(d, excludeFolders, level, rootPath))
+                    .ToArray();
+
+                if (HasContentInSubdirectories(subDirs, excludeFolders, level, rootPath, currentDepth + 1, maxDepth))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Игнорируем ошибки доступа при проверке
+                continue;
+            }
+        }
+
+        return false;
+    }
+
+    private string GetUnityFolderIcon(string folderName)
+    {
+        return folderName.ToLower() switch
+        {
+            "scripts" => "📝",
+            "prefabs" => "🎭",
+            "materials" => "🎨",
+            "textures" => "🖼️",
+            "editor" => "⚙️",
+            "resources" => "📦",
+            "plugins" => "🔌",
+            "animations" => "🎬",
+            "audio" => "🔊",
+            "models" => "🎲",
+            "shaders" => "✨",
+            "sprites" => "🖼️",
+            "ui" => "🖥️",
+            "fonts" => "🔤",
+            "scenes" => "🏞️",
+            _ => "📁"
+        };
+    }
+
+    private string GetUnityFileIcon(string extension)
+    {
+        return extension switch
+        {
+            ".cs" => "📜",
+            ".prefab" => "🎭",
+            ".unity" => "🏞️",
+            ".mat" => "🎨",
+            ".shader" or ".cginc" or ".hlsl" or ".compute" => "✨",
+            ".asmdef" or ".asmref" => "📋",
+            ".controller" => "🎮",
+            ".asset" => "📦",
+            ".png" or ".jpg" or ".jpeg" or ".tga" => "🖼️",
+            ".fbx" or ".obj" or ".dae" => "🎲",
+            ".anim" or ".animation" => "🎬",
+            ".mp3" or ".wav" or ".ogg" => "🔊",
+            ".ttf" or ".otf" => "🔤",
+            ".json" => "📄",
+            ".xml" or ".yaml" => "📋",
+            ".md" or ".txt" => "📝",
+            _ => "📄"
+        };
     }
 
     private FileNode BuildFileTree(string path, string rootPath, SizeMode mode, int depth, int maxDepth)
@@ -372,7 +933,6 @@ public class FilesController : ControllerBase
 
         if (node.IsDirectory)
         {
-            // Для режима Full не исключаем никакие папки
             if (mode.Id != 1 && AlwaysExclude.Any(ex => name.Equals(ex, StringComparison.OrdinalIgnoreCase)))
             {
                 return null;
@@ -382,7 +942,6 @@ public class FilesController : ControllerBase
             {
                 try
                 {
-                    // Добавляем подпапки
                     foreach (var dir in Directory.GetDirectories(path))
                     {
                         var childNode = BuildFileTree(dir, rootPath, mode, depth + 1, maxDepth);
@@ -392,7 +951,6 @@ public class FilesController : ControllerBase
                         }
                     }
 
-                    // Добавляем файлы
                     foreach (var file in Directory.GetFiles(path))
                     {
                         var fileName = Path.GetFileName(file);
@@ -400,20 +958,17 @@ public class FilesController : ControllerBase
 
                         bool include = false;
 
-                        // Если режим Full - включаем ВСЕ файлы
                         if (mode.IncludeAll)
                         {
                             include = true;
                         }
                         else
                         {
-                            // Проверяем расширения
                             if (!string.IsNullOrEmpty(ext))
                             {
                                 include = mode.IncludeExtensions.Contains(ext);
                             }
 
-                            // Проверяем файлы без расширений
                             if (!include)
                             {
                                 var fileNameLower = fileName.ToLower();
@@ -423,7 +978,6 @@ public class FilesController : ControllerBase
                             }
                         }
 
-                        // Проверяем исключения (не для режима Full)
                         if (mode.Id != 1)
                         {
                             bool exclude = mode.ExcludePatterns.Any(pattern =>
@@ -455,7 +1009,6 @@ public class FilesController : ControllerBase
                         }
                     }
 
-                    // Сортируем: сначала папки, потом файлы
                     node.Children = node.Children
                         .OrderByDescending(c => c.IsDirectory)
                         .ThenBy(c => c.Name)
@@ -467,7 +1020,6 @@ public class FilesController : ControllerBase
                 }
             }
 
-            // Вычисляем размер папки
             node.Size = CalculateFolderSize(node);
             node.FormattedSize = FormatSize(node.Size);
             node.IsChecked = node.Children.Any();
