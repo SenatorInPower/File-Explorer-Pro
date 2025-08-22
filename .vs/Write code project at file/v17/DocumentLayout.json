@@ -3,28 +3,12 @@
   "WorkspaceRootPath": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\write code project at file\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
-      "RelativeMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|solutionrelative:.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\write code project at file\\wwwroot\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|solutionrelative:wwwroot\\index.html||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\write code project at file\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0BFD9D2C-4F37-48BA-AA7B-3D0F00E0E986}|..\\VSErrorAnalyzer\\VSErrorAnalyzer.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\vserroranalyzer\\output log\\compactlog.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0BFD9D2C-4F37-48BA-AA7B-3D0F00E0E986}|..\\VSErrorAnalyzer\\VSErrorAnalyzer.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\vserroranalyzer\\output log\\fulllog.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0BFD9D2C-4F37-48BA-AA7B-3D0F00E0E986}|..\\VSErrorAnalyzer\\VSErrorAnalyzer.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\vserroranalyzer\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{0BFD9D2C-4F37-48BA-AA7B-3D0F00E0E986}|..\\VSErrorAnalyzer\\VSErrorAnalyzer.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\vserroranalyzer\\input log\\log.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A3FE3613-F4C3-45B1-A9EB-44D13A2E9F1E}|Write code project at file.csproj|d:\\\u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\c#\\tools\\write code project at file\\write code project at file.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
@@ -38,7 +22,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 33,
-          "SelectedChildIndex": 8,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -50,33 +34,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "Log.txt",
-              "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Input Log\\Log.txt",
-              "RelativeDocumentMoniker": "..\\VSErrorAnalyzer\\Input Log\\Log.txt",
-              "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Input Log\\Log.txt",
-              "RelativeToolTip": "..\\VSErrorAnalyzer\\Input Log\\Log.txt",
-              "ViewState": "AQIAAOcEAAAAMGZmZmYGwEUGAAAAAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2025-08-20T09:36:05.395Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Program.cs",
-              "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Program.cs",
-              "RelativeDocumentMoniker": "..\\VSErrorAnalyzer\\Program.cs",
-              "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Program.cs",
-              "RelativeToolTip": "..\\VSErrorAnalyzer\\Program.cs",
-              "ViewState": "AQIAAI4BAAAAAAAAAAAqwKsBAAABAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-20T09:27:28.1Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 2,
               "Title": "Write code project at file.csproj",
               "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\Write code project at file.csproj",
               "RelativeDocumentMoniker": "Write code project at file.csproj",
@@ -84,72 +42,32 @@
               "RelativeToolTip": "Write code project at file.csproj",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAA4AAAAKAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-08-13T20:00:09.213Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-13T20:00:09.213Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "index.html",
               "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\wwwroot\\index.html",
               "RelativeDocumentMoniker": "wwwroot\\index.html",
               "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\wwwroot\\index.html",
               "RelativeToolTip": "wwwroot\\index.html",
-              "ViewState": "AQIAAJsCAAAA8MzMzMwYwPkIAAAPAAAA",
+              "ViewState": "AQIAANUIAAAAAAAAAAAlwO4IAAANAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001512|",
               "WhenOpened": "2025-08-13T19:59:48.666Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AQIAAB4AAAAAAAAAAIA5wCwAAABJAAAA",
+              "ViewState": "AQIAAFMEAAAAAAAAAAAgwGMEAAAwAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-16T06:58:17.641Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "CompactLog.txt",
-              "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Output Log\\CompactLog.txt",
-              "RelativeDocumentMoniker": "..\\VSErrorAnalyzer\\Output Log\\CompactLog.txt",
-              "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Output Log\\CompactLog.txt",
-              "RelativeToolTip": "..\\VSErrorAnalyzer\\Output Log\\CompactLog.txt",
-              "ViewState": "AQIAACQAAAAAAAAAAAAAAEIAAAAAAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2025-08-20T10:12:21.834Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": ".gitignore",
-              "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\.gitignore",
-              "RelativeDocumentMoniker": ".gitignore",
-              "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\Write code project at file\\.gitignore",
-              "RelativeToolTip": ".gitignore",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAM0AAAAIAAAA",
-              "Icon": "00000000-0000-0000-0000-000000000000.000000|iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAMjSURBVFhH5VbLTttAFL20DivaRHxJt20lVD6g5AMaEEII0Q3QIkqFqGhBBcqbkBDeNJWSBSvCD/AL/QRWbEsXJXEcZ3rvzDgZ22PXoZFYcOLDHV/bM3fOGQ\u002BGewVjTLbuDx0yulAoFHhlVGCTeI4/anhzzrm4zCDWGbsxTbP37ejoT95hq6ACbNv2saay5mWN1et1ViwW2dXVFTs6Pv6V3c09k10G4pGMLvDZILBDsIm2YN22MSqs24DFNEj3E7q7u6H3VW8iFjMuM9lsaBGhBXjRzGqda4CKi8efQk9PT8IwYpfpnUxgEaEF6MtAONcDbkA7eBFPurrg5YvniZhhXMpLPminks//YKnUGzg/P5eZaEgmk3B2dgbX19cyI2B0dsLE2Jh2LG3yez7P\u002BlMpnIXwlECrXQAfoanLINrUDUY8bn7fKMowMB4bUCgWYGJ8XDuW1gJVW/6aUc8czqjKLc7gEvF4AhIJSdlWuvNBW9Xp6SnrHxiAUosW6NDXl4SdTAbev5vQjqXFyckJf9fNqiVoVpusVlkFY8U0lYismKzsYoXdlivMsmpsfWMzUIOAt4D\u002ByIajH6kvUx28pUxI3tIEJpRc00I/tLLgLsYGBwfbZsFWehumJiejW3B4dMS3VyGxJMrK6ZFdJ30ZpSf5HQtW19YDJQjZiCQbFuAE1BXvDhJ0vzeH504fGmhlOTg4ZENDQ1AqtcOCPtjY3ILpD1PRLdjfP\u002BD/3RpSK3L7JffLrrJqWWx5ZSVQAr0FjogUHLqbCjAjDj\u002Bk9CEO6C3I7e2x4eFhuCiVZObueI0WrK1vwMzH6egW7OZyzEIL/FI7FJIHyX57W2Z/JMmCxaXlQA2CNyIXKCFJF8XB6QNe9\u002BZbfguy2V02MjICFxftsWBldRVmZ2aiW4CfUXwD0cqroyK5l2TBwtfFQAlCNqIIILk1knvRsgX4Dcfwk7ptFiwtf4O5T7PRLdhO76AFFspb5vKGSfwvkgVf5hdatID/uMIi8uzdEfa8tgA\u002BMgK/6/\u002BbhJbXwObWNj7jLDARaRrunOxYk2vksS/nfP7zXPQ18IAA8Bcyv5bYM78zewAAAABJRU5ErkJggg==",
-              "WhenOpened": "2025-08-20T09:52:13.885Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "FullLog.txt",
-              "DocumentMoniker": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Output Log\\FullLog.txt",
-              "RelativeDocumentMoniker": "..\\VSErrorAnalyzer\\Output Log\\FullLog.txt",
-              "ToolTip": "D:\\\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B\\C#\\Tools\\VSErrorAnalyzer\\Output Log\\FullLog.txt",
-              "RelativeToolTip": "..\\VSErrorAnalyzer\\Output Log\\FullLog.txt",
-              "ViewState": "AQIAAMQGAAAAMDMzMzMrwAAAAAAAAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2025-08-20T10:11:50.46Z",
               "EditorCaption": ""
             }
           ]

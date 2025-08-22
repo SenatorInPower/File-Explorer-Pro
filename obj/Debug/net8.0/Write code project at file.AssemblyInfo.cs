@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DocGenerator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+61de27d29fad1a5f5861823b03b47d92774de34c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c71bca4e881100be583fa441d10f81ec84401d89")]
 [assembly: System.Reflection.AssemblyProductAttribute("DocGenerator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DocGenerator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

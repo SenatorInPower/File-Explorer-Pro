@@ -90,6 +90,8 @@ public class FilesController : ControllerBase
     // Добавьте этот уровень 4 в список UnityArchitectureLevels в Program.cs
     // Замените существующий список или добавьте этот уровень
 
+    // Замените список UnityArchitectureLevels в Program.cs на этот обновленный:
+
     private static readonly List<UnityArchitectureLevel> UnityArchitectureLevels = new List<UnityArchitectureLevel>
 {
     new UnityArchitectureLevel
@@ -168,10 +170,32 @@ public class FilesController : ControllerBase
             ".cs", ".csproj", ".html", ".js", ".jsx", ".ts", ".tsx", ".css", ".scss"
         },
         ShowAllFiles = false
+    },
+    new UnityArchitectureLevel
+    {
+        Id = 5,
+        Name = "Assembly",
+        Description = "Только сборки и модули - .dll, .asmdef, .csproj, .sln",
+        IncludeFolders = new List<string>(), // Не ограничиваем папки
+        ExcludeFolders = new List<string>
+        {
+            ".git", "Library", "Temp", "Logs", "Build", "Builds",
+            "UserSettings", "MemoryCaptures", "Recordings",
+            ".vs", ".idea", "node_modules"
+        },
+        IncludeExtensions = new List<string>
+        {
+            ".dll", ".asmdef", ".asmref", ".csproj", ".sln",
+            ".props", ".targets", ".config", ".manifest",
+            ".exe", ".pdb", ".xml", // Для документации сборок
+            "packages.config", ".nuspec", // NuGet файлы
+            "AssemblyInfo.cs" // Специальный файл с информацией о сборке
+        },
+        ShowAllFiles = false
     }
 };
 
-    // Также нужно обновить метод ShouldIncludeFile, чтобы он правильно фильтровал файлы:
+    // Обновите метод ShouldIncludeFile для обработки специальных случаев:
     private bool ShouldIncludeFile(string filePath, UnityArchitectureLevel level)
     {
         if (level == null || level.ShowAllFiles)
@@ -184,8 +208,22 @@ public class FilesController : ControllerBase
         var fileName = Path.GetFileName(filePath).ToLower();
 
         // Проверяем расширение файла
-        return level.IncludeExtensions.Any(ext =>
-            extension.Equals(ext, StringComparison.OrdinalIgnoreCase));
+        bool matchesExtension = level.IncludeExtensions.Any(ext =>
+        {
+            // Если это расширение файла
+            if (ext.StartsWith("."))
+            {
+                return extension.Equals(ext, StringComparison.OrdinalIgnoreCase);
+            }
+            // Если это имя файла (например, AssemblyInfo.cs или packages.config)
+            else
+            {
+                return fileName.Equals(ext.ToLower()) ||
+                       fileName.EndsWith(ext.ToLower());
+            }
+        });
+
+        return matchesExtension;
     }
 
     // И метод ShouldExcludeDirectory тоже нужно обновить для корректной работы:
@@ -408,6 +446,7 @@ public class FilesController : ControllerBase
 
     // В методе GenerateArchitecture в Program.cs обновите логику обработки уровней:
 
+
     [HttpPost("architecture")]
     public IActionResult GenerateArchitecture([FromBody] ArchitectureRequest request)
     {
@@ -463,6 +502,13 @@ public class FilesController : ControllerBase
                     ".cs", ".csproj", ".html", ".js", ".jsx", ".ts", ".tsx", ".css"
                 };
                     break;
+                case 5: // Assembly - новый уровень для обычных проектов
+                    includeExtensions = new List<string> {
+                    ".dll", ".exe", ".pdb", ".csproj", ".sln",
+                    ".props", ".targets", ".config", ".manifest",
+                    ".xml", "packages.config", ".nuspec"
+                };
+                    break;
                 default:
                     includeExtensions = null;
                     break;
@@ -471,19 +517,40 @@ public class FilesController : ControllerBase
             // Создаем временный уровень для обычных проектов
             if (includeExtensions != null)
             {
+                string levelName = request.DetailLevel switch
+                {
+                    1 => "Full",
+                    2 => "Large",
+                    3 => "Medium",
+                    4 => "CodeOnly",
+                    5 => "Assembly",
+                    _ => $"Level{request.DetailLevel}"
+                };
+
+                string levelDescription = request.DetailLevel switch
+                {
+                    1 => "Все файлы",
+                    2 => "Код и конфигурации",
+                    3 => "Backend и конфиги",
+                    4 => "Только код",
+                    5 => "Только сборки и модули",
+                    _ => "Custom level"
+                };
+
                 architectureLevel = new UnityArchitectureLevel
                 {
                     Id = request.DetailLevel,
-                    Name = $"Level{request.DetailLevel}",
-                    Description = "Custom level for non-Unity project",
+                    Name = levelName,
+                    Description = levelDescription,
                     IncludeFolders = new List<string>(),
                     ExcludeFolders = AlwaysExclude.ToList(),
                     IncludeExtensions = includeExtensions,
-                    ShowAllFiles = false
+                    ShowAllFiles = request.DetailLevel == 1
                 };
             }
         }
 
+        // Далее идет существующий код генерации архитектуры...
         var sb = new StringBuilder();
         sb.AppendLine("=== АРХИТЕКТУРА ПРОЕКТА ===");
         sb.AppendLine($"Тип проекта: {(isUnityProject ? "Unity Project" : "General Project")}");

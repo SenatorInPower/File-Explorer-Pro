@@ -97,6 +97,76 @@
                 transform: none;
             }
 
+        /* Новая секция для управления отображением */
+        .view-controls {
+            padding: 15px 30px;
+            background: #ffffff;
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .view-mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #dee2e6;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+            .toggle-switch.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(30px);
+        }
+
+        .view-mode-label {
+            font-weight: 600;
+            color: #495057;
+            user-select: none;
+        }
+
+        .filter-info {
+            padding: 10px 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #0066cc;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .filter-info.active {
+                display: flex;
+            }
+
         /* Поиск стили */
         .search-section {
             padding: 20px 30px;
@@ -269,6 +339,10 @@
             margin-left: 0;
         }
 
+            .tree-node.filtered-out {
+                display: none;
+            }
+
         .tree-node-content {
             display: flex;
             align-items: center;
@@ -388,6 +462,18 @@
             font-weight: 600;
             color: #212529;
             font-size: 14px;
+        }
+
+        /* Empty state for filtered view */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
         }
 
         /* Actions panel */
@@ -545,14 +631,6 @@
                 background: #c82333;
             }
 
-        .btn-restore-defaults {
-            background: #6c757d;
-        }
-
-            .btn-restore-defaults:hover {
-                background: #5a6268;
-            }
-
         .path-history-list {
             max-height: 250px;
             overflow-y: auto;
@@ -636,7 +714,6 @@
                 border-color: #667eea;
             }
 
-   
         /* Оверлей для закрытия при клике вне */
         .path-history-overlay {
             position: fixed;
@@ -648,9 +725,9 @@
             display: none;
         }
 
-        .path-history-overlay.active {
-            display: block;
-        }
+            .path-history-overlay.active {
+                display: block;
+            }
 
         /* Стили для панели настроек архитектуры */
         .architecture-settings {
@@ -694,7 +771,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🗂️ File Explorer Pro</h1>
+            <h1>📂 File Explorer Pro</h1>
             <div id="headerStats">
                 <span style="opacity: 0.9; font-size: 14px;">Готов к работе</span>
             </div>
@@ -735,6 +812,22 @@
             <button onclick="exportPreset()">💾 Экспорт пресета</button>
             <button onclick="importPreset()">📥 Импорт пресета</button>
             <input type="file" id="presetFile" accept=".json" style="display: none;" onchange="handlePresetImport(event)">
+        </div>
+
+        <!-- НОВАЯ СЕКЦИЯ: Переключатель режима отображения -->
+        <div class="view-controls">
+            <div class="view-mode-toggle">
+                <span class="view-mode-label">📋 Все файлы</span>
+                <div class="toggle-switch" id="viewModeToggle" onclick="toggleViewMode()">
+                    <div class="toggle-slider"></div>
+                </div>
+                <span class="view-mode-label">✅ Только выбранные</span>
+            </div>
+
+            <div class="filter-info" id="filterInfo">
+                <span>🔍</span>
+                <span id="filterInfoText">Показаны только выбранные файлы</span>
+            </div>
         </div>
 
         <!-- Новая секция поиска -->
@@ -798,6 +891,10 @@
                     <div class="stat-item">
                         <span class="stat-label">Общий размер:</span>
                         <span class="stat-value">0 B</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Видимых:</span>
+                        <span class="stat-value" id="visibleFilesCount">0</span>
                     </div>
                 </div>
             </div>
@@ -868,7 +965,7 @@
                 <!-- Глубина -->
                 <div style="flex: 1; min-width: 250px;">
                     <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #212529;">
-                        📏 Максимальная глубина:
+                        🔍 Максимальная глубина:
                     </label>
                     <input type="number" id="maxDepth" value="999" min="1" max="999"
                            style="width: 100%; padding: 8px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px;">
@@ -907,50 +1004,186 @@
             let currentMode = 1;
             let searchResults = [];
             let highlightedNodes = new Set();
-
-            // Добавить в начало блока <script> после объявления переменных
+            let isFilteredView = false; // Новая переменная для режима отображения
 
             // Управление историей путей
             const PATH_HISTORY_KEY = 'fileExplorerPathHistory';
             const PATH_HISTORY_INITIALIZED_KEY = 'fileExplorerPathHistoryInitialized';
+
+            // Функция переключения режима отображения
+            function toggleViewMode() {
+                const toggle = document.getElementById('viewModeToggle');
+                const filterInfo = document.getElementById('filterInfo');
+
+                isFilteredView = !isFilteredView;
+
+                if (isFilteredView) {
+                    toggle.classList.add('active');
+                    filterInfo.classList.add('active');
+                    applyTreeFilter();
+                } else {
+                    toggle.classList.remove('active');
+                    filterInfo.classList.remove('active');
+                    removeTreeFilter();
+                }
+
+                updateFilteredStats();
+            }
+
+            // Применение фильтра к дереву
+            function applyTreeFilter() {
+                if (!fileTree) return;
+
+                const treeNodes = document.querySelectorAll('.tree-node');
+                let hasVisibleNodes = false;
+
+                treeNodes.forEach(node => {
+                    const checkbox = node.querySelector('input[type="checkbox"]');
+                    const hasCheckedDescendant = hasCheckedChildren(node);
+
+                    if (checkbox && (checkbox.checked || hasCheckedDescendant)) {
+                        node.classList.remove('filtered-out');
+                        hasVisibleNodes = true;
+                        // Раскрываем родительские узлы
+                        expandParentNodes(node);
+                    } else {
+                        node.classList.add('filtered-out');
+                    }
+                });
+
+                // Показываем пустое состояние если нет выбранных элементов
+                const treeContainer = document.getElementById('treeContainer');
+                if (!hasVisibleNodes) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.id = 'emptyFilterState';
+                    emptyState.innerHTML = `
+                                        <div class="empty-state-icon">📭</div>
+                                        <div>Нет выбранных файлов</div>
+                                        <small style="color: #999; margin-top: 10px; display: block;">
+                                            Выберите файлы с помощью чекбоксов или переключите режим отображения
+                                        </small>
+                                    `;
+
+                    // Удаляем предыдущее пустое состояние если есть
+                    const existingEmpty = document.getElementById('emptyFilterState');
+                    if (existingEmpty) {
+                        existingEmpty.remove();
+                    }
+
+                    if (treeContainer.firstChild) {
+                        treeContainer.insertBefore(emptyState, treeContainer.firstChild);
+                    } else {
+                        treeContainer.appendChild(emptyState);
+                    }
+                } else {
+                    // Удаляем пустое состояние если есть видимые узлы
+                    const existingEmpty = document.getElementById('emptyFilterState');
+                    if (existingEmpty) {
+                        existingEmpty.remove();
+                    }
+                }
+            }
+
+            // Проверка наличия выбранных детей
+            function hasCheckedChildren(node) {
+                const childrenContainer = node.querySelector('.tree-node-children');
+                if (!childrenContainer) return false;
+
+                const childNodes = childrenContainer.querySelectorAll('.tree-node');
+                for (let child of childNodes) {
+                    const checkbox = child.querySelector('input[type="checkbox"]');
+                    if (checkbox && checkbox.checked) return true;
+                    if (hasCheckedChildren(child)) return true;
+                }
+
+                return false;
+            }
+
+            // Раскрытие родительских узлов
+            function expandParentNodes(node) {
+                let parent = node.parentElement;
+                while (parent) {
+                    if (parent.classList.contains('tree-node')) {
+                        parent.classList.remove('filtered-out');
+                        parent.classList.remove('collapsed');
+                        parent.classList.add('expanded');
+
+                        const toggle = parent.querySelector('.node-toggle');
+                        if (toggle) {
+                            toggle.textContent = '▼';
+                        }
+                    }
+                    parent = parent.parentElement;
+                }
+            }
+
+            // Удаление фильтра с дерева
+            function removeTreeFilter() {
+                const treeNodes = document.querySelectorAll('.tree-node');
+                treeNodes.forEach(node => {
+                    node.classList.remove('filtered-out');
+                });
+
+                // Удаляем пустое состояние
+                const emptyState = document.getElementById('emptyFilterState');
+                if (emptyState) {
+                    emptyState.remove();
+                }
+            }
+
+            // Обновление статистики с учетом фильтра
+            function updateFilteredStats() {
+                const visibleNodes = document.querySelectorAll('.tree-node:not(.filtered-out)');
+                const visibleFiles = Array.from(visibleNodes).filter(node => {
+                    const icon = node.querySelector('.node-icon');
+                    return icon && icon.textContent !== '📁';
+                });
+
+                document.getElementById('visibleFilesCount').textContent = visibleFiles.length;
+
+                // Обновляем текст в информации о фильтре
+                if (isFilteredView) {
+                    const stats = calculateStats(fileTree);
+                    document.getElementById('filterInfoText').textContent =
+                        `Показано ${stats.selectedFiles} из ${stats.totalFiles} файлов`;
+                }
+            }
 
             function toggleArchitectureSettings() {
                 const settingsPanel = document.querySelector('.architecture-settings');
                 const isVisible = settingsPanel.style.display !== 'none';
 
                 if (!isVisible) {
-                    // Показываем панель
                     settingsPanel.style.display = 'block';
                     updateSettingsPreview();
 
-                    // Определяем тип проекта
                     const rootPath = document.getElementById('rootPath').value;
                     const isUnityProject = detectProjectType(rootPath);
 
-                    // Обновляем опции в зависимости от типа проекта
                     const levelSelect = document.getElementById('architectureLevel');
                     if (isUnityProject) {
                         levelSelect.innerHTML = `
-                <option value="1">Full - все файлы</option>
-                <option value="2">Standard - основные папки Unity</option>
-                <option value="3">Minimal - только скрипты Unity</option>
-                <option value="4" selected>CodeOnly - .cs, .html, .js, .csproj</option>
-            `;
+                                            <option value="1">Full - все файлы</option>
+                                            <option value="2">Standard - основные папки Unity</option>
+                                            <option value="3">Minimal - только скрипты Unity</option>
+                                            <option value="4" selected>CodeOnly - .cs, .html, .js, .csproj</option>
+                                            <option value="5">Assembly - только сборки (.dll, .asmdef, .csproj)</option>
+                                        `;
                     } else {
                         levelSelect.innerHTML = `
-                <option value="1" selected>Full - все файлы проекта</option>
-                <option value="2">Large - код + конфигурации</option>
-                <option value="3">Medium - backend + конфиги</option>
-                <option value="4">CodeOnly - только код</option>
-            `;
+                                            <option value="1">Full - все файлы проекта</option>
+                                            <option value="2">Large - код + конфигурации</option>
+                                            <option value="3">Medium - backend + конфиги</option>
+                                            <option value="4" selected>CodeOnly - только код</option>
+                                            <option value="5">Assembly - только сборки (.dll, .exe, .pdb)</option>
+                                        `;
                     }
                 } else {
-                    // Скрываем панель
                     settingsPanel.style.display = 'none';
                 }
             }
 
-            // Обновление предпросмотра настроек
             function updateSettingsPreview() {
                 const level = document.getElementById('architectureLevel');
                 const mode = document.getElementById('displayMode');
@@ -959,17 +1192,26 @@
                 const rootPath = document.getElementById('rootPath').value;
                 const isUnity = detectProjectType(rootPath);
 
+                const levelValue = level.value;
+                let levelDescription = '';
+
+                if (levelValue === '5') {
+                    levelDescription = isUnity ?
+                        'Assembly - файлы сборок Unity (.dll, .asmdef, .asmref)' :
+                        'Assembly - файлы сборок .NET (.dll, .exe, .pdb)';
+                }
+
                 const preview = document.getElementById('settingsPreview');
                 preview.innerHTML = `
-        Тип проекта: <strong>${isUnity ? 'Unity Project' : 'General Project'}</strong><br>
-        Уровень: <strong>${level.options[level.selectedIndex].text}</strong><br>
-        Режим: <strong>${mode.value === 'true' ? 'Компактный' : 'Полный'}</strong><br>
-        Глубина: <strong>${depth === '999' ? 'Все уровни' : depth + ' уровней'}</strong><br>
-        Размеры файлов: <strong>${showSize ? 'Да' : 'Нет'}</strong>
-    `;
+                                    Тип проекта: <strong>${isUnity ? 'Unity Project' : 'General Project'}</strong><br>
+                                    Уровень: <strong>${level.options[level.selectedIndex].text}</strong><br>
+                                    ${levelDescription ? `Описание: <strong>${levelDescription}</strong><br>` : ''}
+                                    Режим: <strong>${mode.value === 'true' ? 'Компактный' : 'Полный'}</strong><br>
+                                    Глубина: <strong>${depth === '999' ? 'Все уровни' : depth + ' уровней'}</strong><br>
+                                    Размеры файлов: <strong>${showSize ? 'Да' : 'Нет'}</strong>
+                                `;
             }
 
-            // Генерация архитектуры с настройками
             async function generateArchitectureWithSettings() {
                 const rootPath = document.getElementById('rootPath').value;
                 if (!rootPath) {
@@ -1016,10 +1258,7 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
 
-                    // Показываем уведомление
                     showNotification(`✅ Архитектура сгенерирована с уровнем ${detailLevel}!`);
-
-                    // Скрываем панель настроек
                     toggleArchitectureSettings();
 
                 } catch (error) {
@@ -1030,37 +1269,28 @@
                 }
             }
 
-            // Определение типа проекта
             function detectProjectType(rootPath) {
                 if (!rootPath) return false;
-
                 const unityIndicators = ['Unity', 'Assets', 'unity', 'Script', 'Prefabs', 'Materials'];
                 return unityIndicators.some(indicator =>
                     rootPath.toLowerCase().includes(indicator.toLowerCase())
                 );
             }
 
-            // Загрузка истории путей из localStorage
             function loadPathHistory() {
                 try {
                     const saved = localStorage.getItem(PATH_HISTORY_KEY);
-
                     if (saved) {
                         const parsed = JSON.parse(saved);
-                        // Возвращаем пустой массив если saved это пустой массив
                         return Array.isArray(parsed) ? parsed : [];
                     }
-
-                    // Если истории нет вообще - возвращаем пустой массив
                     return [];
-
                 } catch (e) {
                     console.error('Error loading path history:', e);
                     return [];
                 }
             }
 
-            // Сохранение истории путей
             function savePathHistory(history) {
                 try {
                     localStorage.setItem(PATH_HISTORY_KEY, JSON.stringify(history));
@@ -1069,22 +1299,16 @@
                 }
             }
 
-
-            // Добавление пути в историю (обновленная)
             function addToPathHistory(path) {
                 if (!path || path.trim() === '') return;
 
                 let history = loadPathHistory();
-
-                // Проверяем, есть ли уже такой путь
                 const existingIndex = history.findIndex(item => item.path === path);
 
                 if (existingIndex !== -1) {
-                    // Обновляем существующий путь
                     history[existingIndex].lastUsed = new Date().toISOString();
                     history[existingIndex].useCount++;
                 } else {
-                    // Добавляем новый путь
                     history.unshift({
                         path: path,
                         lastUsed: new Date().toISOString(),
@@ -1092,21 +1316,16 @@
                         isFavorite: false
                     });
 
-                    // Ограничиваем историю 30 элементами
                     if (history.length > 30) {
-                        // Сохраняем избранные
                         const favorites = history.filter(item => item.isFavorite);
                         const nonFavorites = history.filter(item => !item.isFavorite);
-
                         if (nonFavorites.length > 25) {
                             nonFavorites.splice(25);
                         }
-
                         history = [...favorites, ...nonFavorites];
                     }
                 }
 
-                // Сортируем: сначала избранные, потом по частоте использования
                 history.sort((a, b) => {
                     if (a.isFavorite && !b.isFavorite) return -1;
                     if (!a.isFavorite && b.isFavorite) return 1;
@@ -1117,56 +1336,51 @@
                 updatePathHistoryDisplay();
             }
 
-            // Обработка Enter в поле добавления пути
             function handleQuickAddPath(event) {
                 if (event.key === 'Enter') {
                     quickAddPath();
                 }
             }
 
-            // Обновленная функция отображения истории
             function updatePathHistoryDisplay() {
                 const historyList = document.getElementById('pathHistoryList');
-                if (!historyList) return; // Проверка на существование элемента
+                if (!historyList) return;
 
                 const history = loadPathHistory();
 
                 if (!history || history.length === 0) {
                     historyList.innerHTML = `
-                                            <div style="padding: 20px; text-align: center; color: #888;">
-                                                История путей пуста<br>
-                                                <small>Добавьте путь с помощью поля выше</small>
-                                            </div>
-                                        `;
+                                        <div style="padding: 20px; text-align: center; color: #888;">
+                                            История путей пуста<br>
+                                            <small>Добавьте путь с помощью поля выше</small>
+                                        </div>
+                                    `;
                     return;
                 }
 
                 historyList.innerHTML = history.map((item, index) => `
-                                        <div class="path-history-item" data-index="${index}">
-                                            ${item.isFavorite ? '<span class="favorite-star">⭐</span>' : ''}
-                                            <span class="path-text" onclick="selectPath('${item.path.replace(/\\/g, '\\\\')}')">${item.path}</span>
-                                            <div class="path-actions">
-                                                <button class="path-action-btn" onclick="toggleFavorite(${index}, event)"
-                                                        title="${item.isFavorite ? 'Убрать из избранного' : 'В избранное'}">
-                                                    ${item.isFavorite ? '☆' : '⭐'}
-                                                </button>
-                                                <button class="path-action-btn delete" onclick="removePath(${index}, event)" title="Удалить">
-                                                    ✖
-                                                </button>
-                                            </div>
+                                    <div class="path-history-item" data-index="${index}">
+                                        ${item.isFavorite ? '<span class="favorite-star">⭐</span>' : ''}
+                                        <span class="path-text" onclick="selectPath('${item.path.replace(/\\/g, '\\\\')}')">${item.path}</span>
+                                        <div class="path-actions">
+                                            <button class="path-action-btn" onclick="toggleFavorite(${index}, event)"
+                                                    title="${item.isFavorite ? 'Убрать из избранного' : 'В избранное'}">
+                                                ${item.isFavorite ? '☆' : '⭐'}
+                                            </button>
+                                            <button class="path-action-btn delete" onclick="removePath(${index}, event)" title="Удалить">
+                                                ✖
+                                            </button>
                                         </div>
-                                    `).join('');
+                                    </div>
+                                `).join('');
             }
 
-
-            // Выбор пути из истории
             function selectPath(path) {
                 document.getElementById('rootPath').value = path;
                 hidePathHistory();
                 loadFileTree();
             }
 
-            // Переключение избранного с остановкой всплытия
             function toggleFavorite(index, event) {
                 if (event) {
                     event.stopPropagation();
@@ -1177,7 +1391,6 @@
                 if (history[index]) {
                     history[index].isFavorite = !history[index].isFavorite;
 
-                    // Пересортировка
                     history.sort((a, b) => {
                         if (a.isFavorite && !b.isFavorite) return -1;
                         if (!a.isFavorite && b.isFavorite) return 1;
@@ -1189,29 +1402,6 @@
                 }
             }
 
-            // Восстановление стандартных путей
-            function resetToDefaultPaths() {
-                if (confirm('Восстановить стандартные пути? Текущая история будет заменена.')) {
-                    const defaultHistory = DEFAULT_PATHS.map(path => ({
-                        path: path,
-                        lastUsed: new Date().toISOString(),
-                        useCount: 0,
-                        isFavorite: false
-                    }));
-
-                    savePathHistory(defaultHistory);
-                    localStorage.setItem(PATH_HISTORY_INITIALIZED_KEY, 'true');
-                    updatePathHistoryDisplay();
-
-                    // Устанавливаем первый путь в поле ввода
-                    if (defaultHistory.length > 0) {
-                        document.getElementById('rootPath').value = defaultHistory[0].path;
-                    }
-                }
-            }
-
-
-            // Удаление пути с остановкой всплытия
             function removePath(index, event) {
                 if (event) {
                     event.stopPropagation();
@@ -1232,7 +1422,6 @@
                 document.getElementById('pathHistoryOverlay').classList.add('active');
                 document.querySelector('.path-dropdown-toggle').classList.add('active');
 
-                // Фокус на поле добавления пути
                 setTimeout(() => {
                     document.getElementById('quickAddPath').focus();
                 }, 100);
@@ -1253,16 +1442,10 @@
                 }
             }
 
-
-            // Обработка ввода в основном поле пути
             function handlePathInput(event) {
                 if (event.key === 'Enter') {
                     loadFileTree();
                 }
-                // Можно добавить автодополнение при вводе
-                // if (event.key === 'ArrowDown') {
-                //     showPathHistory();
-                // }
             }
 
             function quickAddPath() {
@@ -1272,179 +1455,28 @@
                 if (path) {
                     addToPathHistory(path);
                     input.value = '';
-                    // Автоматически устанавливаем добавленный путь в основное поле
                     document.getElementById('rootPath').value = path;
                 }
             }
 
-            // Управление историей путей (открытие окна управления)
-            function managePathHistory() {
-                const history = loadPathHistory();
-
-                const modal = document.createElement('div');
-                modal.id = 'pathManagerModal';
-                modal.style.cssText = `
-                                        position: fixed;
-                                        top: 0;
-                                        left: 0;
-                                        right: 0;
-                                        bottom: 0;
-                                        background: rgba(0, 0, 0, 0.5);
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        z-index: 1000;
-                                    `;
-
-                const content = document.createElement('div');
-                content.style.cssText = `
-                                        background: white;
-                                        border-radius: 10px;
-                                        padding: 30px;
-                                        max-width: 600px;
-                                        width: 90%;
-                                        max-height: 70vh;
-                                        overflow-y: auto;
-                                    `;
-
-                content.innerHTML = `
-                                        <h3 style="margin-bottom: 20px;">⚙️ Управление историей путей</h3>
-                                        <div style="margin-bottom: 20px;">
-                                            <input type="text" id="newPathInput" placeholder="Добавить новый путь..."
-                                                   style="width: 70%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
-                                            <button onclick="addNewPath()" style="padding: 8px 15px; margin-left: 10px;">Добавить</button>
-                                        </div>
-                                        <div id="pathsList">
-                                            ${history.map((item, index) => `
-                                                <div style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                                                    <span style="flex: 1; font-size: 13px;">
-                                                        ${item.isFavorite ? '⭐' : ''} ${item.path}
-                                                    </span>
-                                                    <span style="color: #888; font-size: 11px; margin: 0 10px;">
-                                                        Использований: ${item.useCount}
-                                                    </span>
-                                                    <button onclick="toggleFavoriteFromModal(${index})"
-                                                            style="padding: 5px 10px; margin-right: 5px; font-size: 12px;">
-                                                        ${item.isFavorite ? 'Убрать ⭐' : 'В избранное'}
-                                                    </button>
-                                                    <button onclick="removePathFromModal(${index})"
-                                                            style="padding: 5px 10px; background: #dc3545; font-size: 12px;">
-                                                        Удалить
-                                                    </button>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                        <div style="margin-top: 20px; text-align: right;">
-                                            <button onclick="clearAllPaths()" style="background: #dc3545; margin-right: 10px;">
-                                                Очистить всю историю
-                                            </button>
-                                            <button onclick="closePathManager()">Закрыть</button>
-                                        </div>
-                                    `;
-
-                modal.appendChild(content);
-                document.body.appendChild(modal);
-
-                // Сохраняем ссылку на модальное окно
-                window.currentModal = modal;
-            }
-
-            // Новая функция для переключения избранного из модального окна
-            function toggleFavoriteFromModal(index) {
-                let history = loadPathHistory();
-                history[index].isFavorite = !history[index].isFavorite;
-
-                // Пересортировка
-                history.sort((a, b) => {
-                    if (a.isFavorite && !b.isFavorite) return -1;
-                    if (!a.isFavorite && b.isFavorite) return 1;
-                    return b.useCount - a.useCount;
-                });
-
-                savePathHistory(history);
-                updatePathHistoryDisplay();
-
-                // Обновляем модальное окно
-                closePathManager();
-                managePathHistory();
-            }
-
-            // Новая функция для удаления пути из модального окна
-            function removePathFromModal(index) {
-                if (confirm('Удалить этот путь из истории?')) {
-                    let history = loadPathHistory();
-                    history.splice(index, 1);
-                    savePathHistory(history);
-                    updatePathHistoryDisplay();
-
-                    // Обновляем модальное окно
-                    closePathManager();
-                    managePathHistory();
-                }
-            }
-
-            // Добавление нового пути через модальное окно
-            function addNewPath() {
-                const input = document.getElementById('newPathInput');
-                const path = input.value.trim();
-
-                if (path) {
-                    addToPathHistory(path);
-                    closePathManager();
-                    managePathHistory(); // Переоткрываем окно с обновленным списком
-                }
-            }
-
-            // Очистка всей истории (обновленная)
             function clearAllPaths() {
                 if (confirm('Удалить всю историю путей? Это действие нельзя отменить.')) {
-                    // Сохраняем пустой массив
                     localStorage.setItem(PATH_HISTORY_KEY, JSON.stringify([]));
                     localStorage.setItem(PATH_HISTORY_INITIALIZED_KEY, 'true');
-
-                    // Сразу обновляем отображение
                     updatePathHistoryDisplay();
-
-                    // Очищаем поле ввода
                     document.getElementById('rootPath').value = '';
                 }
             }
 
-            // Закрытие модального окна (исправленная версия)
-            function closePathManager() {
-                const modal = document.getElementById('pathManagerModal');
-                if (modal) {
-                    document.body.removeChild(modal);
-                }
-                if (window.currentModal) {
-                    window.currentModal = null;
-                }
-            }
-
-            // Сохраняем оригинальную функцию loadFileTree перед модификацией
-            let originalLoadFileTree = null;
-
-            // После определения функции loadFileTree добавляем модификацию
-            window.addEventListener('load', function () {
-                originalLoadFileTree = loadFileTree;
-
-                // Переопределяем loadFileTree
-                window.loadFileTree = async function () {
-                    const path = document.getElementById('rootPath').value;
-                    if (path) {
-                        addToPathHistory(path);
-                    }
-                    return await originalLoadFileTree.call(this);
-                };
-            });
-
-            // Загрузка дерева файлов
             async function loadFileTree() {
                 const path = document.getElementById('rootPath').value;
                 if (!path) {
                     alert('Введите путь к папке');
                     return;
                 }
+
+                // Добавляем путь в историю
+                addToPathHistory(path);
 
                 showLoading(true);
                 try {
@@ -1484,6 +1516,11 @@
                     renderTree(fileTree);
                     updateStats();
 
+                    // Применяем фильтр если он активен
+                    if (isFilteredView) {
+                        applyTreeFilter();
+                    }
+
                 } catch (error) {
                     console.error('Load error:', error);
                     alert('Ошибка загрузки: ' + error.message);
@@ -1492,7 +1529,6 @@
                 }
             }
 
-            // Рендер селектора режимов
             function renderModeSelector(modes) {
                 const selector = document.getElementById('modeSelector');
                 selector.innerHTML = modes.map(mode => {
@@ -1500,22 +1536,20 @@
                     const name = mode.Name || mode.name;
                     const description = mode.Description || mode.description;
                     return `
-                                                        <button class="mode-btn ${id === currentMode ? 'active' : ''}"
-                                                                onclick="changeMode(${id})"
-                                                                title="${description}">
-                                                            ${name}
-                                                        </button>
-                                                    `;
+                                        <button class="mode-btn ${id === currentMode ? 'active' : ''}"
+                                                onclick="changeMode(${id})"
+                                                title="${description}">
+                                            ${name}
+                                        </button>
+                                    `;
                 }).join('');
             }
 
-            // Смена режима
             function changeMode(modeId) {
                 currentMode = modeId;
                 loadFileTree();
             }
 
-            // Рендер дерева с правильными линиями
             function renderTree(node, container = null, isLast = true, depth = 0) {
                 if (!container) {
                     container = document.getElementById('treeContainer');
@@ -1539,14 +1573,12 @@
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'tree-node-content';
 
-                // Добавляем линию-ветку для не-корневых элементов
                 if (depth > 0) {
                     const branch = document.createElement('span');
                     branch.className = 'tree-branch';
                     contentDiv.appendChild(branch);
                 }
 
-                // Проверяем подсветку
                 if (highlightedNodes.has(path)) {
                     contentDiv.classList.add('highlighted');
                 }
@@ -1563,35 +1595,36 @@
                 const icon = isDirectory ? '📁' : getFileIcon(extension);
 
                 contentDiv.innerHTML += `
-                                                    ${toggleBtn}
-                                                    <input type="checkbox" id="${checkboxId}" ${isChecked ? 'checked' : ''}>
-                                                    <span class="node-icon">${icon}</span>
-                                                    <span class="node-name">${name}</span>
-                                                    <span class="node-size">${formattedSize}</span>
-                                                `;
+                                    ${toggleBtn}
+                                    <input type="checkbox" id="${checkboxId}" ${isChecked ? 'checked' : ''}>
+                                    <span class="node-icon">${icon}</span>
+                                    <span class="node-name">${name}</span>
+                                    <span class="node-size">${formattedSize}</span>
+                                `;
 
                 nodeDiv.appendChild(contentDiv);
 
-                // Обработчик чекбокса с правильной обработкой папок
                 const checkbox = contentDiv.querySelector(`#${checkboxId}`);
                 if (checkbox) {
                     checkbox.addEventListener('change', function (e) {
                         e.stopPropagation();
 
-                        // Обновляем модель
                         updateNodeState(fileTree, path, this.checked);
 
-                        // Если это папка, обновляем визуально все дочерние чекбоксы
                         if (isDirectory) {
                             const treeNode = this.closest('.tree-node');
                             updateChildrenCheckboxes(treeNode, this.checked);
                         }
 
                         updateStats();
+
+                        // Обновляем фильтр если он активен
+                        if (isFilteredView) {
+                            applyTreeFilter();
+                        }
                     });
                 }
 
-                // Дочерние элементы
                 if (children && children.length > 0) {
                     const childrenContainer = document.createElement('div');
                     childrenContainer.className = 'tree-node-children';
@@ -1606,7 +1639,6 @@
                 container.appendChild(nodeDiv);
             }
 
-            // Раскрытие/сворачивание папки
             function toggleFolder(event) {
                 event.stopPropagation();
                 const toggle = event.target;
@@ -1623,12 +1655,11 @@
                 }
             }
 
-            // Получение иконки файла
             function getFileIcon(extension) {
                 const icons = {
-                    '.cs': '🔷',
+                    '.cs': '📷',
                     '.js': '🟨',
-                    '.ts': '🔵',
+                    '.ts': '📵',
                     '.html': '🌐',
                     '.css': '🎨',
                     '.json': '📋',
@@ -1644,30 +1675,10 @@
                 return icons[extension] || '📄';
             }
 
-            // Переключение узла
-            function toggleNode(path, checked) {
-                const treeNode = document.querySelector(`[data-path="${path}"]`);
-                if (!treeNode) return;
-
-                const isDirectory = treeNode.querySelector('.node-icon').textContent === '📁';
-
-                // Обновляем состояние в модели
-                updateNodeState(fileTree, path, checked);
-
-                // Если это папка, обновляем визуально все дочерние элементы
-                if (isDirectory) {
-                    updateChildrenCheckboxes(treeNode, checked);
-                }
-
-                updateStats();
-            }
-
             function updateChildrenCheckboxes(parentNode, checked) {
-                // Находим контейнер с дочерними элементами
                 const childrenContainer = parentNode.querySelector('.tree-node-children');
                 if (!childrenContainer) return;
 
-                // Обновляем все чекбоксы внутри
                 const allCheckboxes = childrenContainer.querySelectorAll('input[type="checkbox"]');
                 allCheckboxes.forEach(checkbox => {
                     checkbox.checked = checked;
@@ -1682,14 +1693,12 @@
                 const children = node.Children || node.children;
 
                 if (nodePath === targetPath) {
-                    // Обновляем состояние в модели
                     if (node.IsChecked !== undefined) {
                         node.IsChecked = checked;
                     } else {
                         node.isChecked = checked;
                     }
 
-                    // Если это папка, обновляем все дочерние элементы
                     if (isDirectory && children) {
                         setAllChildren(node, checked);
                     }
@@ -1697,7 +1706,6 @@
                     return true;
                 }
 
-                // Рекурсивно ищем в дочерних элементах
                 if (children) {
                     for (let child of children) {
                         if (updateNodeState(child, targetPath, checked)) {
@@ -1711,66 +1719,15 @@
             function setAllChildren(node, checked) {
                 if (!node) return;
 
-                // Обновляем состояние в модели
                 if (node.IsChecked !== undefined) {
                     node.IsChecked = checked;
                 } else {
                     node.isChecked = checked;
                 }
 
-                // Рекурсивно обновляем всех детей
                 const children = node.Children || node.children;
                 if (children) {
-                    children.forEach(child => setAllChildren(child, checked));
-                }
-            }
-
-            function selectAll() {
-                if (fileTree) {
-                    setAllChildren(fileTree, true);
-                    // Обновляем все чекбоксы визуально
-                    document.querySelectorAll('.tree-node input[type="checkbox"]').forEach(cb => {
-                        cb.checked = true;
-                    });
-                    updateStats();
-                }
-            }
-
-            function deselectAll() {
-                if (fileTree) {
-                    setAllChildren(fileTree, false);
-                    // Обновляем все чекбоксы визуально
-                    document.querySelectorAll('.tree-node input[type="checkbox"]').forEach(cb => {
-                        cb.checked = false;
-                    });
-                    updateStats();
-                }
-            }
-
-            function invertSelection() {
-                if (fileTree) {
-                    invertNodeSelection(fileTree);
-                    renderTree(fileTree);
-                    updateStats();
-                }
-            }
-
-            function invertNodeSelection(node) {
-                if (!node) return;
-
-                const isDirectory = node.IsDirectory !== undefined ? node.IsDirectory : node.isDirectory;
-
-                if (!isDirectory) {
-                    if (node.IsChecked !== undefined) {
-                        node.IsChecked = !node.IsChecked;
-                    } else {
-                        node.isChecked = !node.isChecked;
-                    }
-                }
-
-                const children = node.Children || node.children;
-                if (children) {
-                    children.forEach(child => invertNodeSelection(child));
+                    children.forEach(child => setAllChildren(child, checked));  // Исправлено: было invertNodeSelection
                 }
             }
 
@@ -1780,26 +1737,28 @@
                 const stats = calculateStats(fileTree);
 
                 document.getElementById('statsContent').innerHTML = `
-                                                    <div class="stat-item">
-                                                        <span class="stat-label">Всего файлов:</span>
-                                                        <span class="stat-value">${stats.totalFiles}</span>
-                                                    </div>
-                                                    <div class="stat-item">
-                                                        <span class="stat-label">Выбрано:</span>
-                                                        <span class="stat-value">${stats.selectedFiles}</span>
-                                                    </div>
-                                                    <div class="stat-item">
-                                                        <span class="stat-label">Общий размер:</span>
-                                                        <span class="stat-value">${stats.totalSizeFormatted}</span>
-                                                    </div>
-                                                    <div class="stat-item">
-                                                        <span class="stat-label">Выбрано размер:</span>
-                                                        <span class="stat-value">${stats.selectedSizeFormatted}</span>
-                                                    </div>
-                                                `;
+                                    <div class="stat-item">
+                                        <span class="stat-label">Всего файлов:</span>
+                                        <span class="stat-value">${stats.totalFiles}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Выбрано:</span>
+                                        <span class="stat-value">${stats.selectedFiles}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Общий размер:</span>
+                                        <span class="stat-value">${stats.totalSizeFormatted}</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Видимых:</span>
+                                        <span class="stat-value" id="visibleFilesCount">${isFilteredView ? stats.selectedFiles : stats.totalFiles}</span>
+                                    </div>
+                                `;
 
                 document.getElementById('selectedCount').textContent =
                     `Выбрано: ${stats.selectedFiles} файлов (${stats.selectedSizeFormatted})`;
+
+                updateFilteredStats();
             }
 
             function calculateStats(node) {
@@ -1893,9 +1852,11 @@
 
                     displaySearchResults();
 
-                    // Сразу подсвечиваем результаты
                     if (searchResults.length > 0) {
                         renderTree(fileTree);
+                        if (isFilteredView) {
+                            applyTreeFilter();
+                        }
                     }
 
                 } catch (error) {
@@ -1986,9 +1947,9 @@
                 }, 0);
 
                 summaryContainer.innerHTML = `
-                                                    <strong>✅ Найдено: ${searchResults.length} файлов</strong>
-                                                    <span style="margin-left: 20px;">Размер: ${formatSize(totalSize)}</span>
-                                                `;
+                                    <strong>✅ Найдено: ${searchResults.length} файлов</strong>
+                                    <span style="margin-left: 20px;">Размер: ${formatSize(totalSize)}</span>
+                                `;
                 summaryContainer.classList.add('active');
 
                 resultsContainer.innerHTML = searchResults.map((result, index) => {
@@ -1998,17 +1959,17 @@
                     const path = result.node.Path || result.node.path;
 
                     return `
-                                                        <div class="search-result-item" onclick="selectSearchResult(${index})">
-                                                            <div class="result-filename">
-                                                                ${getFileIcon(extension)} ${name}
-                                                            </div>
-                                                            <div class="result-path">${path}</div>
-                                                            <div class="result-stats">
-                                                                <span>📏 ${formattedSize}</span>
-                                                                <span>📎 ${extension || 'no ext'}</span>
-                                                            </div>
-                                                        </div>
-                                                    `;
+                                        <div class="search-result-item" onclick="selectSearchResult(${index})">
+                                            <div class="result-filename">
+                                                ${getFileIcon(extension)} ${name}
+                                            </div>
+                                            <div class="result-path">${path}</div>
+                                            <div class="result-stats">
+                                                <span>📏 ${formattedSize}</span>
+                                                <span>🔎 ${extension || 'no ext'}</span>
+                                            </div>
+                                        </div>
+                                    `;
                 }).join('');
 
                 resultsContainer.classList.add('active');
@@ -2018,7 +1979,6 @@
                 const result = searchResults[index];
                 const path = result.node.Path || result.node.path;
 
-                // Раскрываем путь к элементу
                 expandPathToNode(path);
 
                 const treeNode = document.querySelector(`[data-path="${path}"]`);
@@ -2027,7 +1987,12 @@
                     const checkbox = treeNode.querySelector('input[type="checkbox"]');
                     if (checkbox) {
                         checkbox.checked = true;
-                        toggleNode(path, true);
+                        updateNodeState(fileTree, path, true);
+                        updateStats();
+
+                        if (isFilteredView) {
+                            applyTreeFilter();
+                        }
                     }
                 }
             }
@@ -2062,13 +2027,12 @@
                 searchResults = [];
                 highlightedNodes.clear();
 
-                // Перерисовываем дерево без подсветки
                 renderTree(fileTree);
+                if (isFilteredView) {
+                    applyTreeFilter();
+                }
             }
 
-            // Функция selectSearchResults удалена, так как не работала корректно
-
-            // Обновите функцию generateCode() в HTML:
             async function generateCode() {
                 const selectedPaths = getSelectedPaths();
                 if (selectedPaths.length === 0) {
@@ -2076,7 +2040,6 @@
                     return;
                 }
 
-                // Получаем состояние чекбокса
                 const showFileSize = document.getElementById('showFileSize').checked;
 
                 showLoading(true);
@@ -2087,7 +2050,7 @@
                         body: JSON.stringify({
                             selectedPaths: selectedPaths,
                             rootPath: document.getElementById('rootPath').value,
-                            showFileSize: showFileSize // Передаем параметр
+                            showFileSize: showFileSize
                         })
                     });
 
@@ -2096,12 +2059,10 @@
                     const a = document.createElement('a');
                     a.href = url;
 
-                    // Добавляем индикатор в имя файла
                     const sizeIndicator = showFileSize ? '_with_sizes' : '';
                     a.download = `generated${sizeIndicator}_${new Date().getTime()}.txt`;
                     a.click();
 
-                    // Показываем уведомление
                     showNotification(`✅ Код сгенерирован${showFileSize ? ' с размерами файлов' : ''}!`);
 
                 } catch (error) {
@@ -2111,21 +2072,20 @@
                 }
             }
 
-            // Добавьте функцию для уведомлений:
             function showNotification(message) {
                 const notification = document.createElement('div');
                 notification.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-                color: white;
-                padding: 15px 20px;
-                border-radius: 10px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-                z-index: 9999;
-                animation: slideIn 0.3s ease-out;
-            `;
+                                    position: fixed;
+                                    bottom: 20px;
+                                    right: 20px;
+                                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                                    color: white;
+                                    padding: 15px 20px;
+                                    border-radius: 10px;
+                                    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                                    z-index: 9999;
+                                    animation: slideIn 0.3s ease-out;
+                                `;
                 notification.innerHTML = message;
                 document.body.appendChild(notification);
 
@@ -2135,9 +2095,7 @@
                 }, 3000);
             }
 
-            // Обновляем старую функцию generateArchitecture
             function generateArchitecture() {
-                // Теперь просто показываем панель настроек
                 toggleArchitectureSettings();
             }
 
@@ -2171,11 +2129,18 @@
             function clearAll() {
                 if (confirm('Очистить все данные?')) {
                     fileTree = null;
+                    isFilteredView = false;
+
+                    // Сбрасываем переключатель
+                    const toggle = document.getElementById('viewModeToggle');
+                    toggle.classList.remove('active');
+                    document.getElementById('filterInfo').classList.remove('active');
+
                     document.getElementById('treeContainer').innerHTML = `
-                                                        <div style="text-align: center; color: #6c757d; padding: 50px;">
-                                                            Загрузите проект для начала работы
-                                                        </div>
-                                                    `;
+                                        <div style="text-align: center; color: #6c757d; padding: 50px;">
+                                            Загрузите проект для начала работы
+                                        </div>
+                                    `;
                     updateStats();
                     clearSearch();
                 }
@@ -2256,14 +2221,17 @@
                     }
                 });
 
-                // ВАЖНО: Перерисовываем дерево для обновления интерфейса
+                // Перерисовываем дерево для обновления интерфейса
                 renderTree(fileTree);
                 updateStats();
 
+                // Автоматически переключаем на режим "Только выбранные" после импорта
+                if (!isFilteredView && appliedCount > 0) {
+                    toggleViewMode();
+                }
+
                 alert(`Пресет "${preset.name}" применен.\nВыбрано ${appliedCount} из ${preset.patterns.length} файлов.`);
             }
-
-
 
             // Объединенная инициализация
             document.addEventListener('DOMContentLoaded', function () {
@@ -2302,19 +2270,631 @@
                 const style = document.createElement('style');
                 style.id = 'notification-styles';
                 style.textContent = `
-                                    @keyframes slideIn {
-                                        from { transform: translateX(100%); opacity: 0; }
-                                        to { transform: translateX(0); opacity: 1; }
-                                    }
-                                    @keyframes slideOut {
-                                        from { transform: translateX(0); opacity: 1; }
-                                        to { transform: translateX(100%); opacity: 0; }
-                                    }
-                                    #showFileSize:checked + label {
-                                        color: #667eea !important;
-                                        font-weight: 600;
-                                    }
-                                `;
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        #showFileSize:checked + label {
+            color: #667eea !important;
+            font-weight: 600;
+        }
+    `;
+                document.head.appendChild(style);
+            }               
+                            
+
+            function selectAll() {
+                if (fileTree) {
+                    setAllChildren(fileTree, true);
+                    document.querySelectorAll('.tree-node input[type="checkbox"]').forEach(cb => {
+                        cb.checked = true;
+                    });
+                    updateStats();
+
+                    if (isFilteredView) {
+                        applyTreeFilter();
+                    }
+                }
+            }
+
+            function deselectAll() {
+                if (fileTree) {
+                    setAllChildren(fileTree, false);
+                    document.querySelectorAll('.tree-node input[type="checkbox"]').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    updateStats();
+
+                    if (isFilteredView) {
+                        applyTreeFilter();
+                    }
+                }
+            }
+
+            function invertSelection() {
+                if (fileTree) {
+                    invertNodeSelection(fileTree);
+                    renderTree(fileTree);
+                    updateStats();
+
+                    if (isFilteredView) {
+                        applyTreeFilter();
+                    }
+                }
+            }
+
+            function invertNodeSelection(node) {
+                if (!node) return;
+                const isDirectory = node.IsDirectory !== undefined ? node.IsDirectory : node.isDirectory;
+                if (!isDirectory) {
+                    if (node.IsChecked !== undefined) {
+                        node.IsChecked = !node.IsChecked;
+                    } else {
+                        node.isChecked = !node.isChecked;
+                    }
+                }
+                const children = node.Children || node.children;
+                if (children) {
+                    children.forEach(child => invertNodeSelection(child)); // Исправлено!
+                }
+            }
+
+            function updateStats() {
+                if (!fileTree) return;
+
+                const stats = calculateStats(fileTree);
+
+                document.getElementById('statsContent').innerHTML = `
+                            <div class="stat-item">
+                                <span class="stat-label">Всего файлов:</span>
+                                <span class="stat-value">${stats.totalFiles}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Выбрано:</span>
+                                <span class="stat-value">${stats.selectedFiles}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Общий размер:</span>
+                                <span class="stat-value">${stats.totalSizeFormatted}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Видимых:</span>
+                                <span class="stat-value" id="visibleFilesCount">${isFilteredView ? stats.selectedFiles : stats.totalFiles}</span>
+                            </div>
+                        `;
+
+                document.getElementById('selectedCount').textContent =
+                    `Выбрано: ${stats.selectedFiles} файлов (${stats.selectedSizeFormatted})`;
+
+                updateFilteredStats();
+            }
+
+            function calculateStats(node) {
+                let stats = {
+                    totalFiles: 0,
+                    selectedFiles: 0,
+                    totalSize: 0,
+                    selectedSize: 0
+                };
+
+                if (!node) {
+                    stats.totalSizeFormatted = '0 B';
+                    stats.selectedSizeFormatted = '0 B';
+                    return stats;
+                }
+
+                function traverse(n) {
+                    if (!n) return;
+
+                    const isDirectory = n.IsDirectory !== undefined ? n.IsDirectory : n.isDirectory;
+                    const isChecked = n.IsChecked !== undefined ? n.IsChecked : n.isChecked;
+                    const size = n.Size !== undefined ? n.Size : n.size || 0;
+                    const children = n.Children || n.children;
+
+                    if (!isDirectory) {
+                        stats.totalFiles++;
+                        stats.totalSize += size;
+                        if (isChecked) {
+                            stats.selectedFiles++;
+                            stats.selectedSize += size;
+                        }
+                    }
+
+                    if (children && Array.isArray(children)) {
+                        children.forEach(child => traverse(child));
+                    }
+                }
+
+                traverse(node);
+
+                stats.totalSizeFormatted = formatSize(stats.totalSize);
+                stats.selectedSizeFormatted = formatSize(stats.selectedSize);
+
+                return stats;
+            }
+
+            function formatSize(bytes) {
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                if (bytes === 0) return '0 B';
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+            }
+
+            // Поиск
+            function handleSearchInput(event) {
+                if (event.key === 'Enter') {
+                    performSearch();
+                }
+            }
+
+            function performSearch() {
+                const searchTerm = document.getElementById('searchInput').value.trim();
+                if (!searchTerm || !fileTree) {
+                    if (!searchTerm) alert('Введите поисковый запрос');
+                    if (!fileTree) alert('Сначала загрузите проект');
+                    return;
+                }
+
+                const caseSensitive = document.getElementById('searchCaseSensitive').checked;
+                const useRegex = document.getElementById('searchRegex').checked;
+                const searchInPath = document.getElementById('searchInPath').checked;
+                const searchExtension = document.getElementById('searchExtension').checked;
+
+                searchResults = [];
+                highlightedNodes.clear();
+
+                try {
+                    let searchPattern;
+                    if (useRegex) {
+                        searchPattern = new RegExp(searchTerm, caseSensitive ? 'g' : 'gi');
+                    } else {
+                        searchPattern = searchTerm;
+                    }
+
+                    searchInTree(fileTree, searchPattern, {
+                        caseSensitive,
+                        useRegex,
+                        searchInPath,
+                        searchExtension
+                    });
+
+                    displaySearchResults();
+
+                    if (searchResults.length > 0) {
+                        renderTree(fileTree);
+                        if (isFilteredView) {
+                            applyTreeFilter();
+                        }
+                    }
+
+                } catch (error) {
+                    alert('Ошибка поиска: ' + error.message);
+                }
+            }
+
+            function searchInTree(node, pattern, options, hierarchy = []) {
+                if (!node) return;
+
+                const { caseSensitive, useRegex, searchInPath, searchExtension } = options;
+
+                const name = node.Name || node.name || '';
+                const path = node.Path || node.path || '';
+                const extension = node.Extension || node.extension || '';
+                const isDirectory = node.IsDirectory !== undefined ? node.IsDirectory : node.isDirectory;
+                const children = node.Children || node.children;
+
+                let nameToSearch = name;
+                let pathToSearch = path;
+
+                if (!caseSensitive && !useRegex) {
+                    nameToSearch = nameToSearch.toLowerCase();
+                    pathToSearch = pathToSearch.toLowerCase();
+                    pattern = pattern.toLowerCase();
+                }
+
+                let isMatch = false;
+
+                if (useRegex) {
+                    isMatch = pattern.test(nameToSearch);
+                } else {
+                    isMatch = nameToSearch.includes(pattern);
+                }
+
+                if (!isMatch && searchInPath) {
+                    if (useRegex) {
+                        isMatch = pattern.test(pathToSearch);
+                    } else {
+                        isMatch = pathToSearch.includes(pattern);
+                    }
+                }
+
+                if (!isMatch && searchExtension && extension) {
+                    let extToSearch = extension;
+                    if (!caseSensitive && !useRegex) {
+                        extToSearch = extToSearch.toLowerCase();
+                    }
+
+                    if (useRegex) {
+                        isMatch = pattern.test(extToSearch);
+                    } else {
+                        isMatch = extToSearch === pattern || extToSearch === '.' + pattern;
+                    }
+                }
+
+                if (isMatch && !isDirectory) {
+                    searchResults.push({
+                        node: node,
+                        hierarchy: [...hierarchy],
+                        path: path
+                    });
+                    highlightedNodes.add(path);
+                }
+
+                if (children) {
+                    const newHierarchy = [...hierarchy, name];
+                    children.forEach(child => {
+                        searchInTree(child, pattern, options, newHierarchy);
+                    });
+                }
+            }
+
+            function displaySearchResults() {
+                const resultsContainer = document.getElementById('searchResults');
+                const summaryContainer = document.getElementById('searchSummary');
+
+                if (searchResults.length === 0) {
+                    summaryContainer.innerHTML = `<strong>❌ Ничего не найдено</strong>`;
+                    summaryContainer.classList.add('active');
+                    resultsContainer.classList.remove('active');
+                    return;
+                }
+
+                const totalSize = searchResults.reduce((sum, r) => {
+                    const size = r.node.Size !== undefined ? r.node.Size : r.node.size || 0;
+                    return sum + size;
+                }, 0);
+
+                summaryContainer.innerHTML = `
+                            <strong>✅ Найдено: ${searchResults.length} файлов</strong>
+                            <span style="margin-left: 20px;">Размер: ${formatSize(totalSize)}</span>
+                        `;
+                summaryContainer.classList.add('active');
+
+                resultsContainer.innerHTML = searchResults.map((result, index) => {
+                    const name = result.node.Name || result.node.name;
+                    const extension = result.node.Extension || result.node.extension || '';
+                    const formattedSize = result.node.FormattedSize || result.node.formattedSize || '';
+                    const path = result.node.Path || result.node.path;
+
+                    return `
+                                <div class="search-result-item" onclick="selectSearchResult(${index})">
+                                    <div class="result-filename">
+                                        ${getFileIcon(extension)} ${name}
+                                    </div>
+                                    <div class="result-path">${path}</div>
+                                    <div class="result-stats">
+                                        <span>📏 ${formattedSize}</span>
+                                        <span>🔎 ${extension || 'no ext'}</span>
+                                    </div>
+                                </div>
+                            `;
+                }).join('');
+
+                resultsContainer.classList.add('active');
+            }
+
+            function selectSearchResult(index) {
+                const result = searchResults[index];
+                const path = result.node.Path || result.node.path;
+
+                expandPathToNode(path);
+
+                const treeNode = document.querySelector(`[data-path="${path}"]`);
+                if (treeNode) {
+                    treeNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const checkbox = treeNode.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        updateNodeState(fileTree, path, true);
+                        updateStats();
+
+                        if (isFilteredView) {
+                            applyTreeFilter();
+                        }
+                    }
+                }
+            }
+
+            function expandPathToNode(path) {
+                const parts = path.split('\\');
+                let currentPath = '';
+
+                for (let i = 0; i < parts.length; i++) {
+                    if (i === 0) {
+                        currentPath = parts[i];
+                    } else {
+                        currentPath += '\\' + parts[i];
+                    }
+
+                    const node = document.querySelector(`[data-path="${currentPath}"]`);
+                    if (node) {
+                        node.classList.remove('collapsed');
+                        node.classList.add('expanded');
+                        const toggle = node.querySelector('.node-toggle');
+                        if (toggle) toggle.textContent = '▼';
+                    }
+                }
+            }
+
+            function clearSearch() {
+                document.getElementById('searchInput').value = '';
+                document.getElementById('searchResults').innerHTML = '';
+                document.getElementById('searchResults').classList.remove('active');
+                document.getElementById('searchSummary').innerHTML = '';
+                document.getElementById('searchSummary').classList.remove('active');
+                searchResults = [];
+                highlightedNodes.clear();
+
+                renderTree(fileTree);
+                if (isFilteredView) {
+                    applyTreeFilter();
+                }
+            }
+
+            async function generateCode() {
+                const selectedPaths = getSelectedPaths();
+                if (selectedPaths.length === 0) {
+                    alert('Выберите файлы для генерации');
+                    return;
+                }
+
+                const showFileSize = document.getElementById('showFileSize').checked;
+
+                showLoading(true);
+                try {
+                    const response = await fetch('/api/files/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            selectedPaths: selectedPaths,
+                            rootPath: document.getElementById('rootPath').value,
+                            showFileSize: showFileSize
+                        })
+                    });
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+
+                    const sizeIndicator = showFileSize ? '_with_sizes' : '';
+                    a.download = `generated${sizeIndicator}_${new Date().getTime()}.txt`;
+                    a.click();
+
+                    showNotification(`✅ Код сгенерирован${showFileSize ? ' с размерами файлов' : ''}!`);
+
+                } catch (error) {
+                    alert('Ошибка генерации: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            }
+
+            function showNotification(message) {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                            position: fixed;
+                            bottom: 20px;
+                            right: 20px;
+                            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                            color: white;
+                            padding: 15px 20px;
+                            border-radius: 10px;
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                            z-index: 9999;
+                            animation: slideIn 0.3s ease-out;
+                        `;
+                notification.innerHTML = message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => document.body.removeChild(notification), 300);
+                }, 3000);
+            }
+
+            function generateArchitecture() {
+                toggleArchitectureSettings();
+            }
+
+            function getSelectedPaths() {
+                const paths = [];
+
+                function traverse(node) {
+                    if (!node) return;
+
+                    const isDirectory = node.IsDirectory !== undefined ? node.IsDirectory : node.isDirectory;
+                    const isChecked = node.IsChecked !== undefined ? node.IsChecked : node.isChecked;
+                    const path = node.Path || node.path;
+                    const children = node.Children || node.children;
+
+                    if (!isDirectory && isChecked) {
+                        paths.push(path);
+                    }
+
+                    if (children) {
+                        children.forEach(child => traverse(child));
+                    }
+                }
+
+                if (fileTree) {
+                    traverse(fileTree);
+                }
+
+                return paths;
+            }
+
+            function clearAll() {
+                if (confirm('Очистить все данные?')) {
+                    fileTree = null;
+                    isFilteredView = false;
+
+                    // Сбрасываем переключатель
+                    const toggle = document.getElementById('viewModeToggle');
+                    toggle.classList.remove('active');
+                    document.getElementById('filterInfo').classList.remove('active');
+
+                    document.getElementById('treeContainer').innerHTML = `
+                                <div style="text-align: center; color: #6c757d; padding: 50px;">
+                                    Загрузите проект для начала работы
+                                </div>
+                            `;
+                    updateStats();
+                    clearSearch();
+                }
+            }
+
+            function showLoading(show) {
+                document.getElementById('loading').classList.toggle('active', show);
+            }
+
+            // Экспорт/импорт пресетов
+            function exportPreset() {
+                const selectedPaths = getSelectedPaths();
+                if (selectedPaths.length === 0) {
+                    alert('Выберите файлы для экспорта в пресет');
+                    return;
+                }
+
+                const rootPath = document.getElementById('rootPath').value;
+                const relativePaths = selectedPaths.map(path => {
+                    return path.replace(rootPath + '\\', '');
+                });
+
+                const preset = {
+                    name: prompt('Введите название пресета:', 'Мой пресет'),
+                    patterns: relativePaths,
+                    created: new Date().toISOString(),
+                    rootPath: rootPath,
+                    totalFiles: selectedPaths.length
+                };
+
+                const json = JSON.stringify(preset, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `preset_${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function importPreset() {
+                document.getElementById('presetFile').click();
+            }
+
+            function handlePresetImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const preset = JSON.parse(e.target.result);
+                        applyPreset(preset);
+                    } catch (error) {
+                        alert('Ошибка чтения пресета: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function applyPreset(preset) {
+                if (!fileTree) {
+                    alert('Сначала загрузите проект');
+                    return;
+                }
+
+                const rootPath = document.getElementById('rootPath').value;
+
+                // Снимаем все выделения
+                setAllChildren(fileTree, false);
+
+                // Применяем пресет
+                let appliedCount = 0;
+                preset.patterns.forEach(pattern => {
+                    const fullPath = rootPath + '\\' + pattern;
+                    if (updateNodeState(fileTree, fullPath, true)) {
+                        appliedCount++;
+                    }
+                });
+
+                // Перерисовываем дерево для обновления интерфейса
+                renderTree(fileTree);
+                updateStats();
+
+                // Автоматически переключаем на режим "Только выбранные" после импорта
+                if (!isFilteredView && appliedCount > 0) {
+                    toggleViewMode();
+                }
+
+                alert(`Пресет "${preset.name}" применен.\nВыбрано ${appliedCount} из ${preset.patterns.length} файлов.`);
+            }
+
+            // Объединенная инициализация
+            document.addEventListener('DOMContentLoaded', function () {
+                console.log('File Explorer Pro initialized');
+
+                document.getElementById('architectureLevel')?.addEventListener('change', updateSettingsPreview);
+                document.getElementById('displayMode')?.addEventListener('change', updateSettingsPreview);
+                document.getElementById('maxDepth')?.addEventListener('input', updateSettingsPreview);
+                document.getElementById('showFileSize')?.addEventListener('change', updateSettingsPreview);
+
+                // Загрузка истории путей
+                const history = loadPathHistory();
+                if (history && history.length > 0) {
+                    const lastUsed = history.find(item => item.isFavorite) || history[0];
+                    if (lastUsed) {
+                        document.getElementById('rootPath').value = lastUsed.path;
+                    }
+                }
+
+                // Восстановление состояния чекбокса размера файлов
+                const showFileSizeCheckbox = document.getElementById('showFileSize');
+                if (showFileSizeCheckbox) {
+                    const savedState = localStorage.getItem('showFileSize');
+                    if (savedState !== null) {
+                        showFileSizeCheckbox.checked = savedState === 'true';
+                    }
+
+                    showFileSizeCheckbox.addEventListener('change', function () {
+                        localStorage.setItem('showFileSize', this.checked);
+                    });
+                }
+            });
+
+            // Добавляем стили для анимации
+            if (!document.getElementById('notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'notification-styles';
+                style.textContent = `
+                            @keyframes slideIn {
+                                from { transform: translateX(100%); opacity: 0; }
+                                to { transform: translateX(0); opacity: 1; }
+                            }
+                            @keyframes slideOut {
+                                from { transform: translateX(0); opacity: 1; }
+                                to { transform: translateX(100%); opacity: 0; }
+                            }
+                            #showFileSize:checked + label {
+                                color: #667eea !important;
+                                font-weight: 600;
+                            }
+                        `;
                 document.head.appendChild(style);
             }
         </script>
