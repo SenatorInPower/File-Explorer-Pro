@@ -20,7 +20,7 @@ app.UseCors(x => x.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapControllers(); 
-app.Run();
+app.Run(); 
 
 // ========== DATA MODELS ==========
 public class FileNode
